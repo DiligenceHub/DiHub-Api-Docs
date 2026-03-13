@@ -80,7 +80,27 @@ Após criar sua chave, inclua-a em todas as requisições no header `X-Api-Token
 
 ```bash
 curl 'https://api.dihub.com.br/credits/balance' \
---header 'X-Api-Token: {SEU-TOKEN}'
+  --header 'X-Api-Token: YOUR_API_TOKEN'
 ```
+
+## Ambientes
+
+Use uma das URLs abaixo conforme o ambiente liberado para a sua conta:
+
+**Produção**
+
+```bash
+https://api.dihub.com.br
+```
+
+**Homologação**
+
+```bash
+https://homolog.api.dihubapp.com
+```
+
+<Warning>
+O ambiente de homologação depende de liberação pela equipe de desenvolvimento da DiHub. A ativação feita diretamente pelo próprio usuário ainda está em desenvolvimento.
+</Warning>
 
 A validação padrão do token é de 90 dias.

@@ -2,6 +2,9 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "DiHub Documentation",
+  "topbarLabels": {
+    "onThisPage": "Nesta página"
+  },
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
@@ -25,6 +28,13 @@
             ]
           },
           {
+            "group": "Referência",
+            "pages": [
+              "reference/consumo-creditos",
+              "reference/todas-certidoes"
+            ]
+          },
+          {
             "group": "Webhooks",
             "pages": [
               "webhooks/webhooks"
@@ -34,7 +44,7 @@
       },
       {
         "tab": "Referência da API",
-        "openapi": "openapi.yaml",
+        "openapi": "openapi.json",
         "groups": [
           {
             "group": "Começando",
@@ -43,15 +53,15 @@
             ]
           },
           {
-            "group": "Créditos",
+            "group": "Endpoints",
             "pages": [
-              "api-reference/credits/balance"
-            ]
-          },
-          {
-            "group": "Diligências",
-            "pages": [
-              "api-reference/diligences/emit"
+              "api-reference/credits/balance",
+              "api-reference/diligences/emit",
+              "GET /diligences/{id}/status",
+              "GET /diligences/{id}/certificates",
+              "GET /diligences/{id}/download-pdf",
+              "GET /diligences/{id}/download-zip",
+              "GET /certificate/{id}/download-pdf"
             ]
           }
         ]

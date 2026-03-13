@@ -1,34 +1,84 @@
 ---
 title: Comece por aqui
 icon: 'Rocket'
-description: "Pegue seu café e aprenda sobre a DiHub!"
+description: "Visão geral da documentação da DiHub e dos ambientes disponíveis para integração"
 ---
 
-Nesta documentação você encontrará tudo o que precisa para integrar com a API da DiHub. Desenvolvida por desenvolvedores para desenvolvedores, nossa plataforma foi projetada para ser intuitiva e fácil de usar.
+Nesta documentação você encontra o essencial para autenticar sua aplicação, consultar créditos, emitir diligências e baixar os arquivos gerados pela DiHub.
 
-## <Icon icon="Rocket" type="solid"/>  O que é a DiHub?
+## Como começar
 
-A DiHub é uma plataforma que simplifica processos complexos. Percebemos que as soluções existentes eram excessivamente complexas:
-- Documentações extensas e confusas
-- Processos de homologação longos e burocráticos
-- Múltiplas formas de realizar a mesma operação
+<Steps>
+  <Step title="Crie seu token de API">
+    Gere um token no dashboard e envie o valor no header `X-Api-Token`.
 
-Nossa solução? Uma plataforma que transforma a complexidade em uma API simples e intuitiva.
+    <Check>
+      Você encontra o passo a passo completo em [Autenticação](/introduction/authentication).
+    </Check>
+  </Step>
 
-## <Icon icon="laptop" type="solid"/>  API descomplicada
+  <Step title="Valide seu saldo">
+    Consulte o endpoint de saldo antes de iniciar fluxos em lote ou operações sensíveis a crédito.
 
-Nossa API foi construída com princípios fundamentais para facilitar a integração.
+    <Check>
+      A consulta de saldo não consome créditos.
+    </Check>
 
-1. **Baseada em intenção**: Cada endpoint representa exatamente o que você lê
-   ```
-   GET /credits/balance    // Consulta saldo
-   POST /diligence/emission // Emissão de diligência
-   ```
+    <Info>
+      Se você não tiver créditos disponíveis, acesse o [painel financeiro no dashboard](https://app.dihub.com.br/perfil/financeiro) e solicite a quantidade desejada.
+    </Info>
+  </Step>
 
-2. **Consistente**: Nossa API retorna sempre um padrão previsível, facilitando a implementação.
+  <Step title="Emita sua primeira diligência">
+    Envie o documento e as comarcas desejadas para iniciar a emissão e acompanhe o status até a conclusão.
+  </Step>
+</Steps>
 
-Para facilitar ainda mais, oferecemos suporte a modo de desenvolvimento.
+## Ambientes disponíveis
 
-## <Icon icon="cloud" type="solid"/>  Dúvidas? 
+### Produção
+
+```bash
+https://api.dihub.com.br
+```
+
+### Homologação
+
+```bash
+https://homolog.api.dihubapp.com
+```
+
+<Warning>
+O ambiente de homologação não fica liberado automaticamente. Você precisa entrar em contato com a equipe de desenvolvimento da DiHub para solicitar o acesso. O fluxo de liberação diretamente pelo próprio usuário ainda está em desenvolvimento.
+</Warning>
+
+## O que você pode fazer com a API
+
+- Consultar saldo de créditos
+- Emitir diligências com múltiplas comarcas
+- Acompanhar o processamento das solicitações
+- Listar e baixar certidões, relatórios e arquivos consolidados em PDF
+
+## <Icon icon="cloud" type="solid"/>  Dúvidas?
 
 Nossa equipe está sempre pronta para ajudar! Entre em contato conosco.
+
+## Navegação rápida
+
+<CardGroup cols={2}>
+  <Card title="Autenticação" icon="key" href="/introduction/authentication">
+    Configure o seu token de API.
+  </Card>
+
+  <Card title="Referência da API" icon="code" href="/api-reference/overview">
+    Veja os endpoints da API.
+  </Card>
+
+  <Card title="Consumo de créditos" icon="calculator" href="/reference/consumo-creditos">
+    Entenda o consumo de créditos.
+  </Card>
+
+  <Card title="Todas as certidões" icon="list-check" href="/reference/todas-certidoes">
+    Consulte a lista de certidões emitidas pela DiHub.
+  </Card>
+</CardGroup>
