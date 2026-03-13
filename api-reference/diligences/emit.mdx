@@ -1,0 +1,346 @@
+---
+title: 'Emitir Diligência'
+description: 'Cria uma nova diligência para verificação de antecedentes e emissão de certidões'
+---
+
+Permite que você crie uma nova diligência para verificação de antecedentes. O endpoint suporta diferentes cenários de uso e determina automaticamente os tipos de certidões necessárias.
+
+## Endpoint
+
+```http
+POST /diligences/emit
+```
+
+## Autenticação
+
+Esta rota requer autenticação via chave de API. Inclua seu token no header `X-Api-Token`.
+
+## Cenários Suportados
+
+A API suporta três cenários principais:
+
+1. **Diligência Completa com Certidões**: Emite certidões federais, estaduais e municipais
+2. **Apenas Análise de Crédito**: Realiza consulta de crédito sem emitir certidões
+3. **Combinado**: Diligência completa + análise de crédito
+
+## Corpo da Requisição
+
+```json
+{
+  "document": "12345678901",
+  "documentIdentity": "MG12345678",
+  "districts": [
+    {
+      "state": "MG",
+      "district": "BELO_HORIZONTE"
+    }
+  ],
+  "creditAnalysis": false,
+  "creditAnalysisOnly": false
+}
+```
+
+### Parâmetros
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `document` | string | Sim | CPF (11 dígitos) ou CNPJ (14 dígitos) sem formatação |
+| `documentIdentity` | string | Não | RG do titular (apenas para CPF) |
+| `districts` | array | Condicional | Lista de comarcas (obrigatório exceto se `creditAnalysisOnly: true`). Máximo: 2 comarcas |
+| `creditAnalysis` | boolean | Não | Se `true`, inclui análise de crédito (Serasa). Padrão: `false` |
+| `creditAnalysisOnly` | boolean | Não | Se `true`, realiza apenas análise de crédito sem emitir certidões. Padrão: `false` |
+
+### Estrutura de District
+
+```json
+{
+  "state": "MG",
+  "district": "BELO_HORIZONTE"
+}
+```
+
+**Estados e comarcas disponíveis:**
+
+- **MG (Minas Gerais)**: `BELO_HORIZONTE`, `DIVINOPOLIS`
+- **SP (São Paulo)**: `SAO_PAULO`
+
+## Exemplos de Requisição
+
+### 1. Diligência Completa para CPF (1 comarca)
+
+**Custo: 1 crédito**
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678901",
+  "documentIdentity": "MG12345678",
+  "districts": [
+    {
+      "state": "MG",
+      "district": "BELO_HORIZONTE"
+    }
+  ]
+}'
+```
+
+### 2. Diligência Completa para CNPJ (1 comarca)
+
+**Custo: 1 crédito**
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678000190",
+  "districts": [
+    {
+      "state": "SP",
+      "district": "SAO_PAULO"
+    }
+  ]
+}'
+```
+
+### 3. Múltiplas Comarcas (Mesmo Estado)
+
+**Custo: 1 crédito**
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678901",
+  "districts": [
+    {
+      "state": "MG",
+      "district": "BELO_HORIZONTE"
+    },
+    {
+      "state": "MG",
+      "district": "DIVINOPOLIS"
+    }
+  ]
+}'
+```
+
+### 4. Múltiplas Comarcas (Estados Diferentes)
+
+**Custo: 2 créditos** (1 base + 1 por múltiplos estados)
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678901",
+  "districts": [
+    {
+      "state": "MG",
+      "district": "BELO_HORIZONTE"
+    },
+    {
+      "state": "SP",
+      "district": "SAO_PAULO"
+    }
+  ]
+}'
+```
+
+### 5. Diligência com Análise de Crédito
+
+**Custo: 1.5 créditos** (1 pela diligência + 0.5 pela análise)
+
+<Note>
+Análise de crédito só é realizada para maiores de 18 anos.
+</Note>
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678901",
+  "documentIdentity": "MG12345678",
+  "districts": [
+    {
+      "state": "MG",
+      "district": "BELO_HORIZONTE"
+    }
+  ],
+  "creditAnalysis": true
+}'
+```
+
+### 6. Apenas Análise de Crédito (Sem Certidões)
+
+**Custo: 1 crédito**
+
+<Warning>
+Comarcas não são necessárias neste cenário. O titular deve ter 18+ anos.
+</Warning>
+
+```bash
+curl --location 'https://s87bfswpmi.execute-api.us-east-1.amazonaws.com/diligences/emit' \
+--header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y' \
+--header 'Content-Type: application/json' \
+--data '{
+  "document": "12345678901",
+  "creditAnalysisOnly": true
+}'
+```
+
+## Resposta de Sucesso
+
+```json
+{
+  "diligenceId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Diligência emitida com sucesso"
+}
+```
+
+### Campos da Resposta
+
+- `diligenceId` (string): Identificador único da diligência criada. Use este ID para acompanhar o status e obter as certidões
+- `message` (string): Mensagem de confirmação
+
+## Possíveis Erros
+
+### 400 - Dados Inválidos
+
+Retornado quando os dados enviados são inválidos.
+
+```json
+{
+  "message": "Erro de validação",
+  "details": [
+    {
+      "path": ["document"],
+      "message": "O documento deve ter 11 ou 14 caracteres"
+    }
+  ]
+}
+```
+
+### 400 - Créditos Insuficientes
+
+Retornado quando não há créditos suficientes para a operação.
+
+```json
+{
+  "message": "Créditos insuficientes",
+  "details": {
+    "requiredCredits": 2,
+    "totalCreditsAmount": 1
+  }
+}
+```
+
+**Solução**: Adicione mais créditos à sua conta antes de criar a diligência.
+
+### 400 - Comarca Inválida
+
+Retornado quando a comarca especificada não existe ou não é válida para o estado.
+
+```json
+{
+  "message": "Comarca inválida INVALID_DISTRICT no estado MG",
+  "details": {
+    "district": {
+      "state": "MG",
+      "district": "INVALID_DISTRICT"
+    }
+  }
+}
+```
+
+**Solução**: Consulte a lista de comarcas disponíveis acima.
+
+### 400 - Comarcas Obrigatórias
+
+Retornado quando comarcas não são fornecidas (exceto para análise de crédito apenas).
+
+```json
+{
+  "message": "Erro de validação",
+  "details": [
+    {
+      "path": ["districts"],
+      "message": "Distritos são obrigatórios quando não é apenas Análise DiHub"
+    }
+  ]
+}
+```
+
+**Solução**: Inclua pelo menos uma comarca ou use `creditAnalysisOnly: true`.
+
+### 400 - Menor de Idade
+
+Retornado quando análise de crédito é solicitada para menor de 18 anos.
+
+```json
+{
+  "message": "Análise não realizada: usuário menor de idade."
+}
+```
+
+**Solução**: Análise de crédito só está disponível para maiores de 18 anos.
+
+### 401 - Não Autorizado
+
+Retornado quando o token de API está ausente ou é inválido.
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Missing or invalid api token"
+}
+```
+
+**Solução**: Verifique se você está enviando o header `X-Api-Token` com um token válido.
+
+## Tabela de Custos
+
+| Cenário | Custo |
+|---------|-------|
+| Diligência completa (1 comarca) | 1 crédito |
+| Diligência completa (2 comarcas, mesmo estado) | 1 crédito |
+| Diligência completa (2 comarcas, estados diferentes) | 2 créditos |
+| Análise de crédito apenas | 1 crédito |
+| Diligência completa + análise de crédito | 1.5 créditos |
+
+## Tipos de Certidões Emitidas
+
+Dependendo do tipo de documento e das comarcas, as seguintes certidões são emitidas automaticamente:
+
+**Para CPF:**
+- Certidão Federal (Justiça Federal)
+- Certidão Estadual por estado (Justiça Estadual)
+- Certidão Municipal por comarca (Justiça do Trabalho)
+
+**Para CNPJ:**
+- Certidão Federal (Receita Federal)
+- Certidão Estadual por estado (Junta Comercial)
+- Certidão Municipal por comarca (Prefeitura)
+
+## Boas Práticas
+
+<Tip>
+Sempre consulte o saldo de créditos antes de emitir diligências para evitar erros de créditos insuficientes.
+</Tip>
+
+1. **Valide documentos**: Certifique-se de que o CPF/CNPJ é válido antes de enviar
+2. **Escolha comarcas relevantes**: Selecione comarcas baseadas na localização do titular
+3. **Armazene o `diligenceId`**: Guarde o ID retornado para consultas futuras
+4. **Implemente retry**: Em caso de erro 500, tente novamente após alguns segundos
+5. **Monitore créditos**: Implemente alertas quando o saldo estiver baixo
+
+## Webhook
+
+Quando a diligência for processada, você receberá uma notificação via webhook (se configurado) com o status e os links das certidões.
+
+Veja mais em [Webhooks](/webhooks/webhooks).

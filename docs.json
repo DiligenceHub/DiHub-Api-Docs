@@ -33,12 +33,25 @@
         ]
       },
       {
-        "tab": "API Reference",
+        "tab": "Referência da API",
+        "openapi": "openapi.yaml",
         "groups": [
           {
-            "group": "Endpoints",
+            "group": "Começando",
             "pages": [
-              "api-reference/openapi"
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Créditos",
+            "pages": [
+              "api-reference/credits/balance"
+            ]
+          },
+          {
+            "group": "Diligências",
+            "pages": [
+              "api-reference/diligences/emit"
             ]
           }
         ]

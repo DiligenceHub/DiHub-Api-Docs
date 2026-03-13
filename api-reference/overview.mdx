@@ -1,0 +1,179 @@
+---
+title: 'Visão Geral da API'
+description: 'Introdução à API DiHub para emissão de diligências e gerenciamento de créditos'
+---
+
+## Bem-vindo à API DiHub
+
+A API DiHub permite que você automatize a emissão de diligências e certidões legais no Brasil, além de gerenciar créditos da sua conta.
+
+## URL Base
+
+Todas as requisições devem ser feitas para:
+
+```
+https://s87bfswpmi.execute-api.us-east-1.amazonaws.com
+```
+
+## Autenticação
+
+Todas as rotas da API (exceto documentação) requerem autenticação via chave de API.
+
+Inclua sua chave no header `X-Api-Token`:
+
+```bash
+X-Api-Token: SEU_TOKEN_AQUI
+```
+
+<Card title="Como obter sua chave de API" icon="key" href="/introduction/authentication">
+  Veja o guia completo de autenticação para criar e gerenciar suas chaves de API
+</Card>
+
+## Recursos Disponíveis
+
+<CardGroup cols={2}>
+  <Card title="Créditos" icon="credit-card" href="/api-reference/credits/balance">
+    Consulte o saldo de créditos disponível em sua conta
+  </Card>
+  
+  <Card title="Diligências" icon="file-certificate" href="/api-reference/diligences/emit">
+    Emita diligências para verificação de antecedentes e certidões
+  </Card>
+</CardGroup>
+
+## Tipos de Requisição
+
+A API usa métodos HTTP padrão:
+
+- `GET` - Recuperar informações (ex: consultar saldo)
+- `POST` - Criar novos recursos (ex: emitir diligência)
+
+## Formato de Dados
+
+Todas as requisições e respostas usam formato JSON.
+
+**Headers obrigatórios:**
+```bash
+Content-Type: application/json
+X-Api-Token: SEU_TOKEN_AQUI
+```
+
+## Códigos de Status HTTP
+
+| Código | Descrição |
+|--------|-----------|
+| `200` | Sucesso - Requisição processada com sucesso |
+| `400` | Bad Request - Dados inválidos ou regra de negócio violada |
+| `401` | Unauthorized - Token ausente ou inválido |
+| `500` | Internal Server Error - Erro no servidor |
+
+## Formato de Erros
+
+Quando ocorre um erro, a API retorna uma resposta no seguinte formato:
+
+```json
+{
+  "message": "Erro de validação",
+  "details": [
+    {
+      "path": ["campo"],
+      "message": "Descrição do erro"
+    }
+  ]
+}
+```
+
+### Exemplos de Erros Comuns
+
+**Token Inválido (401):**
+```json
+{
+  "error": "Unauthorized",
+  "message": "Missing or invalid api token"
+}
+```
+
+**Créditos Insuficientes (400):**
+```json
+{
+  "message": "Créditos insuficientes",
+  "details": {
+    "requiredCredits": 2,
+    "totalCreditsAmount": 1
+  }
+}
+```
+
+**Validação de Dados (400):**
+```json
+{
+  "message": "Erro de validação",
+  "details": [
+    {
+      "path": ["document"],
+      "message": "O documento deve ter 11 ou 14 caracteres"
+    }
+  ]
+}
+```
+
+## Limites e Custos
+
+### Créditos
+
+Cada operação consome uma quantidade específica de créditos:
+
+| Operação | Custo |
+|----------|-------|
+| Consultar saldo | Gratuito |
+| Diligência (1 comarca) | 1 crédito |
+| Diligência (2 comarcas, mesmo estado) | 1 crédito |
+| Diligência (2 comarcas, estados diferentes) | 2 créditos |
+| Análise de crédito apenas | 1 crédito |
+| Diligência + análise de crédito | 1.5 créditos |
+
+<Tip>
+Sempre consulte seu saldo antes de emitir diligências para evitar erros.
+</Tip>
+
+### Rate Limits
+
+A API possui limites de requisições por período. Se você precisar de limites maiores, entre em contato com o suporte.
+
+## Ambientes
+
+**Produção:**
+```
+https://s87bfswpmi.execute-api.us-east-1.amazonaws.com
+```
+
+<Note>
+Atualmente disponível apenas o ambiente de produção. Ambiente de testes em desenvolvimento.
+</Note>
+
+## Suporte
+
+Precisa de ajuda? Entre em contato:
+
+- **Email**: [claudiolima@dihub.com.br](mailto:claudiolima@dihub.com.br)
+- **Dashboard**: [app.dihub.com.br](https://app.dihub.com.br)
+
+## Próximos Passos
+
+<CardGroup cols={2}>
+  <Card title="Autenticação" icon="shield" href="/introduction/authentication">
+    Configure sua chave de API
+  </Card>
+  
+  <Card title="Emitir Diligência" icon="rocket" href="/api-reference/diligences/emit">
+    Comece a usar a API
+  </Card>
+  
+  <Card title="Webhooks" icon="webhook" href="/webhooks/webhooks">
+    Receba notificações de eventos
+  </Card>
+  
+  <Card title="Consultar Créditos" icon="chart-line" href="/api-reference/credits/balance">
+    Monitore seu saldo
+  </Card>
+</CardGroup>

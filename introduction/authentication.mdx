@@ -22,6 +22,15 @@ Gerencie suas chaves de API diretamente em nossa plataforma. Você pode:
   - A chave tiver sido revogada
 </Card>
 
+Quando o token é inválido ou não está presente, a API retorna a seguinte resposta:
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Missing or invalid api token"
+}
+```
+
 ## <Icon icon="key" type="solid"/>  Criando chaves de API
 
 <Card title="Boas Práticas de Segurança" icon="light-emergency-on" horizontal>
@@ -31,39 +40,47 @@ Gerencie suas chaves de API diretamente em nossa plataforma. Você pode:
   * Revogue imediatamente qualquer chave comprometida
 </Card>
 
-## Como criar sua chave de API
+## Como criar sua chave de API pela plataforma
 
-Siga estes passos no dashboard da DiHub:
+Siga estes passos no [Dashboard DiHub](https://app.dihub.com.br) para criar sua chave de API:
 
 <Steps>
-  <Step title="Acesse a Seção de Integração">
-    <Card>
-      <Card title="Clique no botão 'Criar Chave'">
-        Inicie o processo de criação de uma nova chave de API
-      </Card>
-    </Card>
+  <Step title="Acesse o painel de desenvolvedores">
+    No menu da sua conta (canto superior direito), clique em **Desenvolvedores** para acessar a página de Chaves de API.
+
+    <Frame>
+      <img src="/images/entrar-no-painel-de-dev.png" alt="Menu Minha conta com opção Desenvolvedores" />
+    </Frame>
   </Step>
-  <Step title="Adicione uma Descrição">
-    <Card>
-      <Card title="Identifique sua chave">
-        Adicione uma descrição clara para identificar o propósito desta chave
-      </Card>
-    </Card>
+  <Step title="Crie um novo token">
+    Na página **Chaves de API**, clique no botão **+ Criar Novo Token** no canto superior direito.
+
+    <Frame>
+      <img src="/images/criar-novo-token.png" alt="Botão Criar Novo Token na página de Chaves de API" />
+    </Frame>
   </Step>
-  <Step title="Copie sua Chave">
-    <Card>
-      <Card title="Armazene sua chave com segurança">
-        Copie a chave gerada e armazene-a em um local seguro
-      </Card>
-    </Card>
+  <Step title="Copie e salve seu token">
+    Após a criação, o token será exibido na tabela. Use o ícone de copiar ao lado do token para copiá-lo e armazene-o em um local seguro — você pode copia-lo sempre que necessário.
+
+    <Frame>
+      <img src="/images/copiar-e-salvar-o-token.png" alt="Tabela de tokens com ícone para copiar" />
+    </Frame>
   </Step>
 </Steps>
 
-Após criar sua chave, você pode começar a integrar com nossa API. Lembre-se de incluir a chave em todas as requisições no header `X-Api-Token`:
+<Card title="Desativando um token" icon="trash" horizontal>
+  Para desativar um token que não precisa mais ser usado, clique no ícone de lixeira na coluna **Ações** da tabela de Chaves de API. Tokens desativados não podem ser reativados.
+
+  <Frame>
+    <img src="/images/desativar-o-token.png" alt="Ações para desativar token" />
+  </Frame>
+</Card>
+
+Após criar sua chave, inclua-a em todas as requisições no header `X-Api-Token`:
 
 ```bash
-curl --location 'https://api.dihub.com.br/v1/credits/balance' \
---header 'X-Api-Token: 01KE2M9KJMA3AHKB45WE72SJGX:MTFiMTIzODctNDkzNy00OTBiLTkxMDItZjU3Y'
+curl 'https://api.dihub.com.br/credits/balance' \
+--header 'X-Api-Token: {SEU-TOKEN}'
 ```
 
 A validação padrão do token é de 90 dias.
