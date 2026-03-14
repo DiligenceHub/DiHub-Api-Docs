@@ -428,6 +428,9 @@
         "summary": "Consultar saldo de créditos",
         "description": "Retorna o saldo total disponível para a conta autenticada.",
         "operationId": "getCreditsBalance",
+        "x-mint": {
+          "href": "/api-reference/credits/balance"
+        },
         "responses": {
           "200": {
             "description": "Saldo retornado com sucesso.",
@@ -456,6 +459,9 @@
         "summary": "Emitir diligência",
         "description": "Cria uma nova diligência para emissão de certidões, análise de crédito ou ambos os fluxos combinados.",
         "operationId": "emitDiligence",
+        "x-mint": {
+          "href": "/api-reference/diligences/emit"
+        },
         "requestBody": {
           "required": true,
           "content": {

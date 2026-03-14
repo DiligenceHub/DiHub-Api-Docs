@@ -55,8 +55,8 @@
           {
             "group": "Endpoints",
             "pages": [
-              "api-reference/credits/balance",
-              "api-reference/diligences/emit",
+              "GET /credits/balance",
+              "POST /diligences/emit",
               "GET /diligences/{id}/status",
               "GET /diligences/{id}/certificates",
               "GET /diligences/{id}/download-pdf",
