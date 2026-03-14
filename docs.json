@@ -68,8 +68,8 @@
           {
             "group": "Endpoints",
             "pages": [
-              "openapi.json get /credits/balance",
-              "openapi.json post /diligences/emit",
+              "api-reference/credits/balance",
+              "api-reference/diligences/emit",
               "GET /diligences/{id}/status",
               "GET /diligences/{id}/certificates",
               "GET /diligences/{id}/download-pdf",

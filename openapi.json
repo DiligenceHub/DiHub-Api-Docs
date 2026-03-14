@@ -181,6 +181,36 @@
           }
         }
       },
+      "EmitErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensagem de erro."
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "message": { "type": "string" }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Objeto com dados específicos do erro (ex: requiredCredits, district)."
+              }
+            ]
+          }
+        }
+      },
       "CreditBalanceResponse": {
         "type": "object",
         "required": [
@@ -204,16 +234,16 @@
         "properties": {
           "state": {
             "type": "string",
-            "description": "UF da comarca.",
-            "enum": [
-              "MG",
-              "SP"
-            ],
+            "description": "Sigla do estado brasileiro (UF).",
+            "minLength": 1,
+            "maxLength": 100,
             "example": "MG"
           },
           "district": {
             "type": "string",
-            "description": "Nome interno da comarca suportada pela API.",
+            "description": "Nome do distrito (comarca) em maiúsculas com underscores.",
+            "minLength": 1,
+            "maxLength": 100,
             "example": "BELO_HORIZONTE"
           }
         }
@@ -234,7 +264,9 @@
           },
           "documentIdentity": {
             "type": "string",
-            "description": "Documento de identidade do titular, usado nos cenários em que a busca exigir RG.",
+            "description": "Documento de identidade (RG) do titular. Opcional, apenas para CPF, usado nos cenários em que a busca exigir RG.",
+            "minLength": 6,
+            "maxLength": 15,
             "example": "MG12345678"
           },
           "districts": {
@@ -248,17 +280,17 @@
           },
           "creditAnalysis": {
             "type": "boolean",
-            "description": "Quando `true`, adiciona análise de crédito ao fluxo de certidões.",
+            "description": "Quando `true`, adiciona análise de crédito (Serasa) além das certidões. Adiciona 0,5 créditos ao custo. Só é realizada se o titular tiver 18+ anos.",
             "default": false
           },
           "creditAnalysisOnly": {
             "type": "boolean",
-            "description": "Quando `true`, realiza apenas a análise de crédito sem emitir certidões.",
+            "description": "Quando `true`, realiza apenas análise de crédito sem emitir certidões. Distritos não são obrigatórios. Titular deve ter 18+ anos.",
             "default": false
           },
           "useOldModel": {
             "type": "boolean",
-            "description": "Controla o modelo de relatório de análise de crédito quando o cenário usar análise.",
+            "description": "Quando `true`, usa o modelo antigo de relatório de análise de crédito. Quando `false`, usa o novo modelo de aluguel. Aplica-se apenas a requisições de análise de crédito.",
             "default": false
           }
         }
@@ -462,7 +494,7 @@
           "Diligências"
         ],
         "summary": "Emitir diligência",
-        "description": "Cria uma nova diligência para emissão de certidões, análise de crédito ou ambos os fluxos combinados.\n\nRegras importantes:\n- Consulte `GET /credits/balance` antes de iniciar fluxos em lote.\n- Use no máximo 2 comarcas por requisição.\n- A análise de crédito só é executada para titulares com 18 anos ou mais.\n- Para detalhes de cobrança, veja [Consumo de créditos](/reference/consumo-creditos).",
+        "description": "Cria uma nova diligência. Suporta três cenários principais:\n\n1. **Diligência completa com certidões**: Requer distritos e opcionalmente inclui análise de crédito.\n2. **Apenas análise de crédito**: Realiza somente análise de crédito sem emissão de certidões.\n3. **Combinado**: Diligência completa com análise de crédito adicional.\n\nRegras importantes:\n- Consulte `GET /credits/balance` antes de iniciar fluxos em lote.\n- Use no máximo 2 comarcas por requisição.\n- A análise de crédito só é executada para titulares com 18 anos ou mais.\n- Para detalhes de cobrança, veja [Consumo de créditos](/reference/consumo-creditos).",
         "operationId": "emitDiligence",
         "x-mint": {
           "metadata": {
@@ -480,8 +512,9 @@
                 "$ref": "#/components/schemas/EmitDiligenceRequest"
               },
               "examples": {
-                "cpfOneDistrict": {
-                  "summary": "Diligência para CPF com uma comarca",
+                "fullDiligenceCPF": {
+                  "summary": "Diligência completa para CPF com um distrito",
+                  "description": "Diligência padrão para pessoa física (CPF) em um distrito. Custo: 1 crédito.",
                   "value": {
                     "document": "12345678901",
                     "documentIdentity": "MG12345678",
@@ -493,8 +526,39 @@
                     ]
                   }
                 },
-                "differentStates": {
-                  "summary": "Diligência em estados diferentes",
+                "fullDiligenceCNPJ": {
+                  "summary": "Diligência completa para CNPJ com um distrito",
+                  "description": "Diligência padrão para pessoa jurídica (CNPJ) em um distrito. Custo: 1 crédito.",
+                  "value": {
+                    "document": "12345678000190",
+                    "districts": [
+                      {
+                        "state": "SP",
+                        "district": "SAO_PAULO"
+                      }
+                    ]
+                  }
+                },
+                "multipleDistrictsSameState": {
+                  "summary": "Múltiplos distritos no mesmo estado",
+                  "description": "Diligência cobrindo dois distritos no mesmo estado (ex: MG). Custo: 1 crédito.",
+                  "value": {
+                    "document": "12345678901",
+                    "districts": [
+                      {
+                        "state": "MG",
+                        "district": "BELO_HORIZONTE"
+                      },
+                      {
+                        "state": "MG",
+                        "district": "DIVINOPOLIS"
+                      }
+                    ]
+                  }
+                },
+                "multipleDistrictsDifferentStates": {
+                  "summary": "Múltiplos distritos em estados diferentes",
+                  "description": "Diligência cobrindo distritos em estados diferentes. Custo: 2 créditos.",
                   "value": {
                     "document": "12345678901",
                     "districts": [
@@ -509,8 +573,24 @@
                     ]
                   }
                 },
+                "withCreditAnalysis": {
+                  "summary": "Diligência completa com análise de crédito",
+                  "description": "Combina emissão de certidões com análise de crédito. Custo: 1,5 créditos. Titular deve ter 18+ anos.",
+                  "value": {
+                    "document": "12345678901",
+                    "documentIdentity": "MG12345678",
+                    "districts": [
+                      {
+                        "state": "MG",
+                        "district": "BELO_HORIZONTE"
+                      }
+                    ],
+                    "creditAnalysis": true
+                  }
+                },
                 "creditAnalysisOnly": {
-                  "summary": "Somente análise de crédito",
+                  "summary": "Apenas análise de crédito (sem certidões)",
+                  "description": "Realiza somente análise de crédito sem emitir certidões. Custo: 1 crédito. Titular deve ter 18+ anos.",
                   "value": {
                     "document": "12345678901",
                     "creditAnalysisOnly": true
@@ -532,10 +612,84 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "Erro de validação ou violação de regra de negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmitErrorResponse"
+                },
+                "examples": {
+                  "validationError": {
+                    "summary": "Dados de entrada inválidos",
+                    "value": {
+                      "message": "Validation Error",
+                      "details": [
+                        {
+                          "path": ["document"],
+                          "message": "O documento deve ter 11 ou 14 caracteres"
+                        }
+                      ]
+                    }
+                  },
+                  "missingDistricts": {
+                    "summary": "Distritos obrigatórios",
+                    "value": {
+                      "message": "Validation Error",
+                      "details": [
+                        {
+                          "path": ["districts"],
+                          "message": "Distritos são obrigatórios quando não é apenas Análise DiHub"
+                        }
+                      ]
+                    }
+                  },
+                  "insufficientCredits": {
+                    "summary": "Créditos insuficientes",
+                    "value": {
+                      "message": "Not enough credits",
+                      "details": {
+                        "requiredCredits": 2,
+                        "totalCreditsAmount": 1
+                      }
+                    }
+                  },
+                  "invalidDistrict": {
+                    "summary": "Distrito inválido para o estado",
+                    "value": {
+                      "message": "Invalid district INVALID_DISTRICT in state MG",
+                      "details": {
+                        "district": {
+                          "state": "MG",
+                          "district": "INVALID_DISTRICT"
+                        }
+                      }
+                    }
+                  },
+                  "underage": {
+                    "summary": "Análise de crédito não permitida para menores",
+                    "value": {
+                      "message": "Análise não realizada: usuário menor de idade."
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "description": "Documento do titular não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                },
+                "example": {
+                  "message": "Subject Document Not Found"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"

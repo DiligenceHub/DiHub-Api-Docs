@@ -1,0 +1,71 @@
+---
+title: 'Emitir Diligência'
+description: 'Cria uma nova diligência para emissão de certidões e/ou análise de crédito'
+openapi: openapi.json POST /diligences/emit
+---
+
+## Regras importantes
+
+- Consulte `GET /credits/balance` antes de iniciar fluxos em lote.
+- Use no máximo 2 comarcas por requisição.
+- A análise de crédito só é executada para titulares com 18 anos ou mais.
+- Para detalhes de cobrança, veja [Consumo de créditos](/reference/consumo-creditos).
+
+## Cenários suportados
+
+O endpoint suporta três cenários principais:
+
+<AccordionGroup>
+  <Accordion title="1. Diligência completa com certidões">
+    Requer o campo `districts` com 1 ou 2 comarcas. Opcionalmente, use `creditAnalysis: true` para incluir análise de crédito (Serasa) além das certidões. O campo `documentIdentity` (RG) é opcional e usado apenas para CPF quando a certidão exigir.
+  </Accordion>
+  <Accordion title="2. Apenas análise de crédito">
+    Use `creditAnalysisOnly: true`. Não é necessário informar `districts`. O titular deve ter 18 anos ou mais. Consome 1 crédito.
+  </Accordion>
+  <Accordion title="3. Combinado (certidões + análise)">
+    Informe `districts` e `creditAnalysis: true`. Consome 1,5 créditos (1 para diligência + 0,5 para análise). Titular deve ter 18+ anos.
+  </Accordion>
+</AccordionGroup>
+
+## Campos da requisição
+
+| Campo | Obrigatório | Descrição |
+|-------|-------------|-----------|
+| `document` | Sim | CPF (11 dígitos) ou CNPJ (14 dígitos), sem formatação. |
+| `documentIdentity` | Não | RG do titular. Apenas para CPF, quando a certidão exigir. Entre 6 e 15 caracteres. |
+| `districts` | Sim* | Lista de 1 ou 2 comarcas. Cada item tem `state` (UF) e `district` (nome em maiúsculas com underscores). *Obrigatório exceto quando `creditAnalysisOnly` for `true`. |
+| `creditAnalysis` | Não | Quando `true`, adiciona análise de crédito. +0,5 crédito. Titular deve ter 18+ anos. Padrão: `false`. |
+| `creditAnalysisOnly` | Não | Quando `true`, realiza apenas análise de crédito sem certidões. Padrão: `false`. |
+| `useOldModel` | Não | Quando `true`, usa o modelo antigo de relatório de análise. Padrão: `false`. |
+
+## Exemplos de combinações
+
+- **CPF + uma comarca**: `document`, `districts` (1 item). Opcional: `documentIdentity` se a certidão exigir RG.
+- **CNPJ + uma comarca**: `document` (14 dígitos), `districts` (1 item). CNPJ não usa `documentIdentity`.
+- **Múltiplas comarcas no mesmo estado**: `districts` com 2 itens, mesmo `state`. Custo: 1 crédito.
+- **Múltiplas comarcas em estados diferentes**: `districts` com 2 itens, `state` diferentes. Custo: 2 créditos.
+- **Com análise de crédito**: adicione `creditAnalysis: true`. Custo: +0,5 crédito.
+- **Somente análise**: `creditAnalysisOnly: true`, sem `districts`. Custo: 1 crédito.
+
+## Erros comuns e como tratar
+
+<AccordionGroup>
+  <Accordion title="400 - Dados de entrada inválidos">
+    O `details` traz `path` e `message` indicando o campo incorreto. Verifique formato de CPF/CNPJ (apenas números) e se `districts` está preenchido quando necessário.
+  </Accordion>
+  <Accordion title="400 - Distritos obrigatórios">
+    Enviado quando `creditAnalysisOnly` é `false` e `districts` está ausente ou vazio. Informe pelo menos uma comarca.
+  </Accordion>
+  <Accordion title="400 - Créditos insuficientes">
+    O `details` inclui `requiredCredits` e `totalCreditsAmount`. Consulte `GET /credits/balance` e solicite créditos no [painel financeiro](https://app.dihub.com.br/perfil/financeiro).
+  </Accordion>
+  <Accordion title="400 - Distrito inválido">
+    A comarca informada não existe para o estado. Verifique a lista em [Todas as certidões](/reference/todas-certidoes).
+  </Accordion>
+  <Accordion title="400 - Análise não permitida para menores">
+    O titular tem menos de 18 anos. A análise de crédito não será executada; o crédito não é cobrado.
+  </Accordion>
+  <Accordion title="404 - Documento do titular não encontrado">
+    O CPF ou CNPJ informado não foi encontrado na base. Verifique o documento e tente novamente.
+  </Accordion>
+</AccordionGroup>
