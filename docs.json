@@ -1,5 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "openapi": "openapi.json",
   "theme": "mint",
   "name": "DiHub Documentation",
   "topbarLabels": {
@@ -68,11 +69,11 @@
             "pages": [
               "api-reference/credits/balance",
               "api-reference/diligences/emit",
-              "GET /diligences/{id}/status",
-              "GET /diligences/{id}/certificates",
-              "GET /diligences/{id}/download-pdf",
-              "GET /diligences/{id}/download-zip",
-              "GET /certificate/{id}/download-pdf"
+              "api-reference/diligences/status",
+              "api-reference/diligences/certificates",
+              "api-reference/diligences/download-pdf",
+              "api-reference/diligences/download-zip",
+              "api-reference/certificates/download-pdf"
             ]
           }
         ]
