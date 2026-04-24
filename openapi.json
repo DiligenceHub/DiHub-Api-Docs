@@ -9,6 +9,16 @@
       "email": "claudiolima@dihub.com.br"
     }
   },
+  "servers": [
+    {
+      "url": "https://api.dihub.com.br",
+      "description": "Produção"
+    },
+    {
+      "url": "https://homolog.api.dihubapp.com",
+      "description": "Homologação"
+    }
+  ],
   "tags": [
     {
       "name": "Créditos",
