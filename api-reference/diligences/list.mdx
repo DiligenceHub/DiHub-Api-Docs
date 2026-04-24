@@ -1,0 +1,19 @@
+---
+title: 'Listar Diligências'
+description: 'Retorna os IDs de todas as diligências associadas à conta autenticada'
+openapi: 'GET /diligences'
+---
+
+## Como usar
+
+Use este endpoint para obter a lista completa de IDs das suas diligências e depois consultar o status ou certidões de cada uma via `GET /diligences/{id}/status`.
+
+Os resultados são retornados em ordem decrescente de criação — as diligências mais recentes aparecem primeiro.
+
+## Próximos passos
+
+Com os IDs em mãos:
+
+- **Status da diligência** → `GET /diligences/{id}/status`
+- **Certidões emitidas** → `GET /diligences/{id}/certificates`
+- **Download PDF** → `GET /diligences/{id}/certificates/download-pdf`

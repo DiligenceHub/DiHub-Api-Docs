@@ -2,479 +2,90 @@
   "openapi": "3.0.3",
   "info": {
     "title": "DiHub API",
+    "description": "API para acessar as funcionalidades da plataforma DiHub",
     "version": "1.0.0",
-    "description": "API da DiHub para consulta de créditos, emissão de diligências, acompanhamento de processamento e download de certidões."
-  },
-  "servers": [
-    {
-      "url": "https://api.dihub.com.br",
-      "description": "Produção"
-    },
-    {
-      "url": "https://homolog.api.dihubapp.com",
-      "description": "Homologação. O acesso precisa ser liberado pela equipe DiHub. A habilitação pelo próprio usuário ainda está em desenvolvimento."
+    "contact": {
+      "name": "Suporte DiHub",
+      "email": "claudiolima@dihub.com.br"
     }
-  ],
+  },
   "tags": [
     {
       "name": "Créditos",
-      "description": "Consulta de saldo disponível para a conta autenticada."
+      "description": "Gestão de saldo de créditos"
     },
     {
       "name": "Diligências",
-      "description": "Emissão, acompanhamento e download dos artefatos gerados pela diligência."
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "ApiTokenAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Api-Token",
-        "description": "Token de API usado para autenticar as requisições."
-      }
-    },
-    "parameters": {
-      "DiligenceId": {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "description": "Identificador da diligência.",
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "example": "550e8400-e29b-41d4-a716-446655440000"
-      },
-      "CertificateId": {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "description": "Identificador da certidão.",
-        "schema": {
-          "type": "string"
-        },
-        "example": "cert_01J0A1BC2DE3FG4H5JK6LM7NPQ"
-      }
-    },
-    "responses": {
-      "UnauthorizedError": {
-        "description": "Token ausente, inválido ou revogado.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/AuthError"
-            },
-            "example": {
-              "error": "Unauthorized",
-              "message": "Missing or invalid api token"
-            }
-          }
-        }
-      },
-      "ValidationError": {
-        "description": "Falha de validação ou regra de negócio.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "example": {
-              "message": "Erro de validação",
-              "details": [
-                {
-                  "path": [
-                    "document"
-                  ],
-                  "message": "O documento deve ter 11 ou 14 caracteres"
-                }
-              ]
-            }
-          }
-        }
-      },
-      "InternalServerError": {
-        "description": "Erro inesperado no servidor.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorMessage"
-            },
-            "example": {
-              "message": "Internal Server Error"
-            }
-          }
-        }
-      },
-      "NotFoundError": {
-        "description": "Recurso não encontrado.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorMessage"
-            },
-            "example": {
-              "message": "Recurso não encontrado"
-            }
-          }
-        }
-      }
-    },
-    "schemas": {
-      "AuthError": {
-        "type": "object",
-        "required": [
-          "error",
-          "message"
-        ],
-        "properties": {
-          "error": {
-            "type": "string",
-            "example": "Unauthorized"
-          },
-          "message": {
-            "type": "string",
-            "example": "Missing or invalid api token"
-          }
-        }
-      },
-      "ErrorMessage": {
-        "type": "object",
-        "required": [
-          "message"
-        ],
-        "properties": {
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "ValidationError": {
-        "type": "object",
-        "required": [
-          "message"
-        ],
-        "properties": {
-          "message": {
-            "type": "string",
-            "example": "Erro de validação"
-          },
-          "details": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ValidationErrorDetail"
-            }
-          }
-        }
-      },
-      "ValidationErrorDetail": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "EmitErrorResponse": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Mensagem de erro."
-          },
-          "details": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "message": { "type": "string" }
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "description": "Objeto com dados específicos do erro (ex: requiredCredits, district)."
-              }
-            ]
-          }
-        }
-      },
-      "CreditBalanceResponse": {
-        "type": "object",
-        "required": [
-          "balance"
-        ],
-        "properties": {
-          "balance": {
-            "type": "number",
-            "format": "float",
-            "description": "Saldo total disponível, somando créditos pessoais e da organização.",
-            "example": 15.5
-          }
-        }
-      },
-      "District": {
-        "type": "object",
-        "required": [
-          "state",
-          "district"
-        ],
-        "properties": {
-          "state": {
-            "type": "string",
-            "description": "Sigla do estado brasileiro (UF).",
-            "minLength": 1,
-            "maxLength": 100,
-            "example": "MG"
-          },
-          "district": {
-            "type": "string",
-            "description": "Nome do distrito (comarca) em maiúsculas com underscores.",
-            "minLength": 1,
-            "maxLength": 100,
-            "example": "BELO_HORIZONTE"
-          }
-        }
-      },
-      "EmitDiligenceRequest": {
-        "type": "object",
-        "required": [
-          "document"
-        ],
-        "properties": {
-          "document": {
-            "type": "string",
-            "description": "CPF com 11 dígitos ou CNPJ com 14 dígitos, sem formatação.",
-            "minLength": 11,
-            "maxLength": 14,
-            "pattern": "^[0-9]{11}$|^[0-9]{14}$",
-            "example": "12345678901"
-          },
-          "documentIdentity": {
-            "type": "string",
-            "description": "Documento de identidade (RG) do titular. Opcional, apenas para CPF, usado nos cenários em que a busca exigir RG.",
-            "minLength": 6,
-            "maxLength": 15,
-            "example": "MG12345678"
-          },
-          "districts": {
-            "type": "array",
-            "description": "Comarcas envolvidas na diligência. Obrigatório exceto quando `creditAnalysisOnly` for `true`.",
-            "minItems": 1,
-            "maxItems": 2,
-            "items": {
-              "$ref": "#/components/schemas/District"
-            }
-          },
-          "creditAnalysis": {
-            "type": "boolean",
-            "description": "Quando `true`, adiciona análise de crédito (Serasa) além das certidões. Adiciona 0,5 créditos ao custo. Só é realizada se o titular tiver 18+ anos.",
-            "default": false
-          },
-          "creditAnalysisOnly": {
-            "type": "boolean",
-            "description": "Quando `true`, realiza apenas análise de crédito sem emitir certidões. Distritos não são obrigatórios. Titular deve ter 18+ anos.",
-            "default": false
-          },
-          "useOldModel": {
-            "type": "boolean",
-            "description": "Quando `true`, usa o modelo antigo de relatório de análise de crédito. Quando `false`, usa o novo modelo de aluguel. Aplica-se apenas a requisições de análise de crédito.",
-            "default": false
-          }
-        }
-      },
-      "EmitDiligenceResponse": {
-        "type": "object",
-        "required": [
-          "diligenceId",
-          "message"
-        ],
-        "properties": {
-          "diligenceId": {
-            "type": "string",
-            "format": "uuid",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          "message": {
-            "type": "string",
-            "example": "Diligência emitida com sucesso"
-          }
-        }
-      },
-      "DiligenceStatus": {
-        "type": "object",
-        "required": [
-          "label"
-        ],
-        "properties": {
-          "label": {
-            "type": "string",
-            "enum": [
-              "IN_PROGRESS",
-              "COMPLETED",
-              "FAILED"
-            ],
-            "example": "IN_PROGRESS"
-          },
-          "message": {
-            "type": "string",
-            "example": "Processamento em andamento"
-          }
-        }
-      },
-      "DiligenceStatusResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "status"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          "subject": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "example": "Maria da Silva"
-              },
-              "document": {
-                "type": "string",
-                "example": "***45678901"
-              }
-            }
-          },
-          "state": {
-            "type": "string",
-            "description": "UF ou combinação de UFs envolvidas na diligência.",
-            "example": "MG/SP"
-          },
-          "district": {
-            "type": "string",
-            "example": "BELO_HORIZONTE"
-          },
-          "status": {
-            "$ref": "#/components/schemas/DiligenceStatus"
-          },
-          "creditAnalysis": {
-            "type": "boolean",
-            "example": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-03-13T14:30:00Z"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-03-13T14:32:00Z"
-          }
-        }
-      },
-      "CertificateFile": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "issuer",
-          "status"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "cert_01J0A1BC2DE3FG4H5JK6LM7NPQ"
-          },
-          "name": {
-            "type": "string",
-            "example": "Certidão de Débitos Trabalhistas"
-          },
-          "issuer": {
-            "type": "string",
-            "example": "TST - Tribunal Superior do Trabalho"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "PENDING",
-              "COMPLETED",
-              "FAILED"
-            ],
-            "example": "COMPLETED"
-          },
-          "downloadUrl": {
-            "type": "string",
-            "format": "uri",
-            "example": "https://api.dihub.com.br/certificate/cert_01J0A1BC2DE3FG4H5JK6LM7NPQ/download-pdf"
-          }
-        }
-      },
-      "DiligenceCertificatesResponse": {
-        "type": "object",
-        "required": [
-          "diligenceId",
-          "certificates"
-        ],
-        "properties": {
-          "diligenceId": {
-            "type": "string",
-            "format": "uuid",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          "certificates": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CertificateFile"
-            }
-          }
-        }
-      }
-    }
-  },
-  "security": [
-    {
-      "ApiTokenAuth": []
+      "description": "Emissão de diligências e gestão de certidões"
     }
   ],
   "paths": {
     "/credits/balance": {
       "get": {
-        "tags": [
-          "Créditos"
+        "tags": ["Créditos"],
+        "summary": "Obter saldo de créditos",
+        "description": "Retorna o saldo total de créditos do usuário autenticado, incluindo créditos pessoais e da organização",
+        "operationId": "getBalance",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
         ],
-        "summary": "Consultar saldo de créditos",
-        "description": "Retorna o saldo total disponível para a conta autenticada.\n\nSe você não tiver créditos disponíveis, acesse o [painel financeiro no dashboard](https://app.dihub.com.br/perfil/financeiro) e solicite a quantidade desejada.",
-        "operationId": "getCreditsBalance",
-        "x-mint": {
-          "metadata": {
-            "title": "Consultar Saldo de Créditos",
-            "description": "Retorna o saldo total de créditos disponível para sua conta"
-          },
-          "content": "<Info>\n  Se você não tiver créditos disponíveis, acesse o [painel financeiro no dashboard](https://app.dihub.com.br/perfil/financeiro) e solicite a quantidade desejada.\n</Info>\n",
-          "href": "/api-reference/credits/balance"
-        },
         "responses": {
           "200": {
-            "description": "Saldo retornado com sucesso.",
+            "description": "Saldo de créditos obtido com sucesso",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreditBalanceResponse"
+                  "type": "object",
+                  "properties": {
+                    "balance": {
+                      "type": "number",
+                      "description": "Total de créditos disponíveis (usuário + organização)",
+                      "example": 15.5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/diligences": {
+      "get": {
+        "tags": ["Diligências"],
+        "summary": "Listar diligências",
+        "description": "Retorna a lista de IDs de todas as diligências associadas à conta autenticada, em ordem decrescente de criação.",
+        "operationId": "listDiligences",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de diligências obtida com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Identificador único da diligência",
+                        "example": "550e8400-e29b-41d4-a716-446655440000"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -490,19 +101,15 @@
     },
     "/diligences/emit": {
       "post": {
-        "tags": [
-          "Diligências"
-        ],
+        "tags": ["Diligências"],
         "summary": "Emitir diligência",
-        "description": "Cria uma nova diligência. Suporta três cenários principais:\n\n1. **Diligência completa com certidões**: Requer distritos e opcionalmente inclui análise de crédito.\n2. **Apenas análise de crédito**: Realiza somente análise de crédito sem emissão de certidões.\n3. **Combinado**: Diligência completa com análise de crédito adicional.\n\nRegras importantes:\n- Consulte `GET /credits/balance` antes de iniciar fluxos em lote.\n- Use no máximo 2 comarcas por requisição.\n- A análise de crédito só é executada para titulares com 18 anos ou mais.\n- Para detalhes de cobrança, veja [Consumo de créditos](/reference/consumo-creditos).",
+        "description": "Cria uma nova diligência. Suporta três cenários principais:\n\n1. **Diligência completa com certidões**: Requer distritos e opcionalmente inclui análise de crédito\n2. **Apenas análise de crédito**: Realiza somente análise de crédito sem emissão de certidões\n3. **Combinado**: Diligência completa com análise de crédito adicional",
         "operationId": "emitDiligence",
-        "x-mint": {
-          "metadata": {
-            "title": "Emitir Diligência",
-            "description": "Cria uma nova diligência para emissão de certidões e/ou análise de crédito"
-          },
-          "href": "/api-reference/diligences/emit"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -511,9 +118,9 @@
                 "$ref": "#/components/schemas/EmitDiligenceRequest"
               },
               "examples": {
-                "DiligenciaCompletaCPF": {
+                "fullDiligenceCPF": {
                   "summary": "Diligência completa para CPF com um distrito",
-                  "description": "Diligência padrão para pessoa física (CPF) em um distrito. Custo: 1 crédito.",
+                  "description": "Diligência padrão para pessoa física (CPF) em um distrito. Custo: 1 crédito",
                   "value": {
                     "document": "12345678901",
                     "documentIdentity": "MG12345678",
@@ -525,9 +132,9 @@
                     ]
                   }
                 },
-                "DiligenciaCompletaCNPJ": {
+                "fullDiligenceCNPJ": {
                   "summary": "Diligência completa para CNPJ com um distrito",
-                  "description": "Diligência padrão para pessoa jurídica (CNPJ) em um distrito. Custo: 1 crédito.",
+                  "description": "Diligência padrão para pessoa jurídica (CNPJ) em um distrito. Custo: 1 crédito",
                   "value": {
                     "document": "12345678000190",
                     "districts": [
@@ -538,9 +145,9 @@
                     ]
                   }
                 },
-                "MultiplasComarcasNoMesmoEstado": {
+                "multipleDistrictsSameState": {
                   "summary": "Múltiplos distritos no mesmo estado",
-                  "description": "Diligência cobrindo dois distritos no mesmo estado (ex: MG). Custo: 1 crédito.",
+                  "description": "Diligência cobrindo dois distritos no mesmo estado (ex: MG). Custo: 1 crédito",
                   "value": {
                     "document": "12345678901",
                     "districts": [
@@ -555,9 +162,9 @@
                     ]
                   }
                 },
-                "MultiplasComarcasEmEstadosDiferentes": {
+                "multipleDistrictsDifferentStates": {
                   "summary": "Múltiplos distritos em estados diferentes",
-                  "description": "Diligência cobrindo distritos em estados diferentes. Custo: 2 créditos.",
+                  "description": "Diligência cobrindo distritos em estados diferentes. Custo: 2 créditos (1 base + 1 para múltiplos estados)",
                   "value": {
                     "document": "12345678901",
                     "districts": [
@@ -572,9 +179,9 @@
                     ]
                   }
                 },
-                "DiligenciaCompletaComAnaliseDeCredito": {
+                "withCreditAnalysis": {
                   "summary": "Diligência completa com análise de crédito",
-                  "description": "Combina emissão de certidões com análise de crédito. Custo: 1,5 créditos. Titular deve ter 18+ anos.",
+                  "description": "Combina emissão de certidões com análise de crédito. Custo: 1,5 créditos (1 para diligência + 0,5 para análise). Nota: Análise de crédito só é realizada se o titular tiver 18+ anos.",
                   "value": {
                     "document": "12345678901",
                     "documentIdentity": "MG12345678",
@@ -587,9 +194,9 @@
                     "creditAnalysis": true
                   }
                 },
-                "ApenasAnaliseDeCredito": {
+                "creditAnalysisOnly": {
                   "summary": "Apenas análise de crédito (sem certidões)",
-                  "description": "Realiza somente análise de crédito sem emitir certidões. Custo: 1 crédito. Titular deve ter 18+ anos.",
+                  "description": "Realiza somente análise de crédito sem emitir certidões. Custo: 1 crédito. Requer que o titular tenha 18+ anos.",
                   "value": {
                     "document": "12345678901",
                     "creditAnalysisOnly": true
@@ -601,21 +208,32 @@
         },
         "responses": {
           "200": {
-            "description": "Diligência criada com sucesso.",
+            "description": "Diligência criada com sucesso",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EmitDiligenceResponse"
+                  "type": "object",
+                  "properties": {
+                    "diligenceId": {
+                      "type": "string",
+                      "description": "Identificador único da diligência criada",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Diligence emitted successfully"
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Erro de validação ou violação de regra de negócio.",
+            "description": "Erro de validação ou violação de regra de negócio",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EmitErrorResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "examples": {
                   "validationError": {
@@ -631,7 +249,7 @@
                     }
                   },
                   "missingDistricts": {
-                    "summary": "Distritos obrigatórios",
+                    "summary": "Distritos obrigatórios para requisições que não são apenas análise",
                     "value": {
                       "message": "Validation Error",
                       "details": [
@@ -678,11 +296,11 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "description": "Documento do titular não encontrado.",
+            "description": "Documento do titular não encontrado",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
                   "message": "Subject Document Not Found"
@@ -698,23 +316,30 @@
     },
     "/diligences/{id}/status": {
       "get": {
-        "tags": [
-          "Diligências"
-        ],
-        "summary": "Consultar status da diligência",
-        "description": "Retorna o estado atual do processamento de uma diligência já criada.",
+        "tags": ["Diligências"],
+        "summary": "Check diligence status",
+        "description": "Returns the current status of a diligence, including subject info, progress (finished/total certificates), and whether it includes credit analysis",
         "operationId": "getDiligenceStatus",
-        "x-mint": {
-          "href": "/api-reference/diligences/status"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/DiligenceId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Diligence ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Status retornado com sucesso.",
+            "description": "Diligence status retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -727,7 +352,17 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "$ref": "#/components/responses/NotFoundError"
+            "description": "Diligence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "message": "Diligence not found"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -737,23 +372,30 @@
     },
     "/diligences/{id}/certificates": {
       "get": {
-        "tags": [
-          "Diligências"
-        ],
-        "summary": "Listar certidões da diligência",
-        "description": "Retorna a lista de certidões associadas à diligência e o status individual de cada item.",
+        "tags": ["Diligências"],
+        "summary": "List diligence certificates",
+        "description": "Returns the list of certificates for a diligence, grouped by court/issuer",
         "operationId": "getDiligenceCertificates",
-        "x-mint": {
-          "href": "/api-reference/diligences/certificates"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/DiligenceId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Diligence ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Lista de certidões retornada com sucesso.",
+            "description": "Certificates list retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -766,7 +408,17 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "$ref": "#/components/responses/NotFoundError"
+            "description": "Diligence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "message": "Diligence not found"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -776,23 +428,41 @@
     },
     "/diligences/{id}/download-pdf": {
       "get": {
-        "tags": [
-          "Diligências"
-        ],
-        "summary": "Baixar PDF consolidado da diligência",
-        "description": "Baixa o PDF consolidado da diligência quando o processamento já estiver concluído.",
+        "tags": ["Diligências"],
+        "summary": "Download diligence as PDF",
+        "description": "Downloads the diligence report as PDF. When mergeCertificates=1, merges all completed certificates into a single PDF. When mergeCertificates=0, returns the first completed certificate PDF.",
         "operationId": "downloadDiligencePdf",
-        "x-mint": {
-          "href": "/api-reference/diligences/download-pdf"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/DiligenceId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Diligence ID"
+          },
+          {
+            "name": "mergeCertificates",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["0", "1"],
+              "default": "0"
+            },
+            "description": "1 to merge all certificates into one PDF, 0 to return first certificate only"
           }
         ],
         "responses": {
           "200": {
-            "description": "Arquivo PDF retornado com sucesso.",
+            "description": "PDF file",
             "content": {
               "application/pdf": {
                 "schema": {
@@ -806,7 +476,14 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "$ref": "#/components/responses/NotFoundError"
+            "description": "Diligence not found or no completed certificates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -816,23 +493,30 @@
     },
     "/diligences/{id}/download-zip": {
       "get": {
-        "tags": [
-          "Diligências"
-        ],
-        "summary": "Baixar ZIP da diligência",
-        "description": "Baixa um arquivo ZIP com os documentos disponíveis para a diligência.",
+        "tags": ["Diligências"],
+        "summary": "Download diligence as ZIP",
+        "description": "Downloads all diligence certificates and report as a ZIP archive",
         "operationId": "downloadDiligenceZip",
-        "x-mint": {
-          "href": "/api-reference/diligences/download-zip"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/DiligenceId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Diligence ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Arquivo ZIP retornado com sucesso.",
+            "description": "ZIP file",
             "content": {
               "application/zip": {
                 "schema": {
@@ -846,7 +530,14 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "$ref": "#/components/responses/NotFoundError"
+            "description": "Diligence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -856,23 +547,30 @@
     },
     "/certificate/{id}/download-pdf": {
       "get": {
-        "tags": [
-          "Diligências"
-        ],
-        "summary": "Baixar PDF de uma certidão",
-        "description": "Baixa o PDF de uma certidão específica gerada pela diligência.",
+        "tags": ["Diligências"],
+        "summary": "Download single certificate PDF",
+        "description": "Downloads a specific certificate by its ID. Use certificate IDs from GET /diligences/{id}/certificates response.",
         "operationId": "downloadCertificatePdf",
-        "x-mint": {
-          "href": "/api-reference/certificates/download-pdf"
-        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/CertificateId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Certificate ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Arquivo PDF retornado com sucesso.",
+            "description": "PDF file",
             "content": {
               "application/pdf": {
                 "schema": {
@@ -886,10 +584,278 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "$ref": "#/components/responses/NotFoundError"
+            "description": "Certificate not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "message": "Certificate not found"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Token",
+        "description": "Chave de API para autenticação. Envie o token no header X-Api-Token."
+      }
+    },
+    "schemas": {
+      "EmitDiligenceRequest": {
+        "type": "object",
+        "required": ["document"],
+        "properties": {
+          "document": {
+            "type": "string",
+            "description": "CPF (11 dígitos) ou CNPJ (14 dígitos) sem formatação",
+            "minLength": 11,
+            "maxLength": 14,
+            "pattern": "^[0-9]{11}$|^[0-9]{14}$",
+            "example": "12345678901"
+          },
+          "documentIdentity": {
+            "type": "string",
+            "description": "Documento de identidade (RG) - opcional, apenas para CPF",
+            "minLength": 6,
+            "maxLength": 15,
+            "example": "MG12345678"
+          },
+          "districts": {
+            "type": "array",
+            "description": "Lista de distritos onde as certidões devem ser emitidas. Obrigatório exceto quando creditAnalysisOnly é true. Máximo 2 distritos.",
+            "minItems": 1,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/components/schemas/StateDistrict"
+            },
+            "example": [
+              {
+                "state": "MG",
+                "district": "BELO_HORIZONTE"
+              }
+            ]
+          },
+          "creditAnalysis": {
+            "type": "boolean",
+            "description": "Se deve incluir análise de crédito (Serasa) além das certidões. Adiciona 0,5 créditos ao custo. Só é realizada se o titular tiver 18+ anos.",
+            "default": false
+          },
+          "creditAnalysisOnly": {
+            "type": "boolean",
+            "description": "Se true, realiza apenas análise de crédito sem emitir certidões. Distritos não são obrigatórios. Titular deve ter 18+ anos.",
+            "default": false
+          },
+          "useOldModel": {
+            "type": "boolean",
+            "description": "Se deve usar o modelo antigo de relatório de análise de crédito (true) ou o novo modelo de aluguel (false). Aplica-se apenas a requisições de análise de crédito. Modelos: antigo usa CREDIT_ANALYSIS_PF/PJ, novo usa CREDIT_ANALYSIS_PF_RENT/PJ_RENT",
+            "default": false
+          }
+        }
+      },
+      "DiligenceStatusResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Diligence ID"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "document": {
+                "type": "string",
+                "description": "Obfuscated document number"
+              }
+            }
+          },
+          "state": {
+            "type": "string",
+            "description": "State (UF) or combination e.g. MG/SP"
+          },
+          "comarca": {
+            "type": "string",
+            "description": "District/court name"
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "enum": ["Concluída", "Em andamento", "Falha"]
+              },
+              "finishedCertificates": {
+                "type": "integer"
+              },
+              "totalCertificates": {
+                "type": "integer"
+              }
+            }
+          },
+          "emissionDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "haveAnalysisOfCredit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DiligenceCertificatesResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Diligence ID"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "document": {
+                "type": "string",
+                "description": "Obfuscated document number"
+              }
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "diligenceStatus": {
+            "type": "string"
+          },
+          "certificates": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "certificateName": {
+                    "type": "string"
+                  },
+                  "emissionResultStatus": {
+                    "type": "string",
+                    "enum": ["Em andamento", "Concluída", "Falha"]
+                  },
+                  "certificateStatus": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": ["Pendência potencial", "Positiva", "Negativa"],
+                    "description": "Status da certidão. Ausente enquanto a emissão não foi concluída."
+                  }
+                }
+              }
+            }
+          },
+          "requester": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "StateDistrict": {
+        "type": "object",
+        "required": ["state", "district"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "Sigla do estado brasileiro (UF)",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "MG"
+          },
+          "district": {
+            "type": "string",
+            "description": "Nome do distrito (comarca) em maiúsculas com underscores",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "BELO_HORIZONTE"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensagem de erro",
+            "example": "Validation Error"
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Credenciais de autenticação ausentes ou inválidas",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "message": "Unauthorized"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Erro interno do servidor",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "message": "Internal Server Error"
+            }
           }
         }
       }

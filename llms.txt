@@ -1,0 +1,87 @@
+# DiHub Documentation
+
+Documentação da API DiHub para emissão de diligências, certidões e análise de crédito.
+
+## Guia
+
+- [Início](/index.mdx) - Página inicial da documentação DiHub
+- [Autenticação](/introduction/authentication.mdx) - Como gerenciar e usar chaves de API (header X-Api-Token)
+- [Consumo de créditos](/reference/consumo-creditos.mdx) - Tabela de cobrança: certidões (1 crédito), análise DiHub (1 crédito), combinado (1,5 créditos), múltiplas comarcas em estados diferentes (+1 crédito)
+- [Todas as certidões](/reference/todas-certidoes.mdx) - Lista completa de certidões emitidas por órgão (TJMG, SEFAZ, Receita Federal, etc.)
+- [Webhooks](/webhooks/webhooks.mdx) - Documentação em desenvolvimento
+
+## API Reference
+
+- [Visão Geral](/api-reference/overview.mdx) - Ambientes (produção: api.dihub.com.br, homologação: homolog.api.dihubapp.com), autenticação, fluxo básico
+- [Consultar Saldo](/api-reference/credits/balance.mdx) - GET /credits/balance - Retorna { balance: number }
+- [Emitir Diligência](/api-reference/diligences/emit.mdx) - POST /diligences/emit - Cria diligência com certidões e/ou análise de crédito. Body: document, documentIdentity?, districts[], creditAnalysis?, creditAnalysisOnly?
+- [Status da Diligência](/api-reference/diligences/status.mdx) - GET /diligences/:id/status - Acompanha processamento
+- [Listar Certidões](/api-reference/diligences/certificates.mdx) - GET /diligences/:id/certificates - Lista certidões da diligência
+- [Baixar PDF](/api-reference/diligences/download-pdf.mdx) - GET /diligences/:id/pdf - Download de certidão individual
+- [Baixar ZIP](/api-reference/diligences/download-zip.mdx) - GET /diligences/:id/zip - Download de todas as certidões
+- [Baixar PDF Certidão](/api-reference/certificates/download-pdf.mdx) - GET /certificates/:id/pdf - Download de certidão específica
+-
+## API Specification
+
+- OpenAPI: [openapi.json](/openapi.json)
+
+## Retrieval Guide
+
+Use this section to quickly find relevant documentation for common queries:
+
+| Query Type | Primary Document | Related Documents |
+|------------|------------------|-------------------|
+| Autenticação / Token | /introduction/authentication.mdx | /api-reference/overview.mdx |
+| Saldo de créditos | /api-reference/credits/balance.mdx | /reference/consumo-creditos.mdx |
+| Como emitir diligência | /api-reference/diligences/emit.mdx | /reference/consumo-creditos.mdx, /reference/todas-certidoes.mdx |
+| Lista de certidões disponíveis | /reference/todas-certidoes.mdx | - |
+| Status do processamento | /api-reference/diligences/status.mdx | - |
+| Download de arquivos | /api-reference/diligences/download-pdf.mdx, /api-reference/diligences/download-zip.mdx | /api-reference/diligences/status.mdx |
+| Preços / Custos | /reference/consumo-creditos.mdx | - |
+| Webhooks | /webhooks/webhooks.mdx | - |
+
+## Common Query Patterns
+
+### "Como iniciar uma diligência para CPF/CNPJ?"
+1. Consultar saldo: GET /credits/balance
+2. Emitir diligência: POST /diligences/emit com document, districts
+3. Ver docs: /api-reference/diligences/emit.mdx, /reference/consumo-creditos.mdx
+
+### "Quais certidões estão disponíveis?"
+- Ver lista completa: /reference/todas-certidoes.mdx
+
+### "Como baixar certidões após processamento?"
+1. Verificar status: GET /diligences/:id/status
+2. Baixar ZIP: GET /diligences/:id/zip (todas) ou GET /diligences/:id/pdf (individual)
+3. Ver docs: /api-reference/diligences/status.mdx, /api-reference/diligences/download-zip.mdx
+
+### "Quanto custa uma diligência?"
+- Uma comarca: 1 crédito
+- Múltiplas comarcas mesmo estado: 1 crédito
+- Múltiplas comarcas estados diferentes: 2 créditos
+- + Análise DiHub: +0,5 crédito
+- Ver docs: /reference/consumo-creditos.mdx
+
+## API Endpoints Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /credits/balance | Consulta saldo de créditos |
+| POST | /diligences/emit | Cria diligência (certidões e/ou análise) |
+| GET | /diligences/:id/status | Status do processamento |
+| GET | /diligences/:id/certificates | Lista certidões da diligência |
+| GET | /diligences/:id/pdf | Download PDF individual |
+| GET | /diligences/:id/zip | Download ZIP com todas |
+| GET | /certificates/:id/pdf | Download certidão específica |
+
+## Authentication
+
+All API requests require the `X-Api-Token` header:
+
+```
+X-Api-Token: YOUR_API_TOKEN
+```
+
+Base URLs:
+- Production: https://api.dihub.com.br
+- Homologation: https://homolog.api.dihubapp.com
