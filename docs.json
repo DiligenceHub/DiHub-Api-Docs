@@ -52,6 +52,14 @@
             "pages": [
               "webhooks/webhooks"
             ]
+          },
+          {
+            "group": "IA",
+            "pages": [
+              "llms/overview",
+              "llms/mcp",
+              "llms/llms-txt"
+            ]
           }
         ]
       },

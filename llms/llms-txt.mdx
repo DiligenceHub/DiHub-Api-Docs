@@ -1,0 +1,33 @@
+---
+title: 'llms.txt'
+description: 'Documentação completa em formato otimizado para LLMs.'
+icon: 'file-lines'
+---
+
+O [`llms.txt`](https://llmstxt.org) é um padrão aberto para expor documentação a modelos de linguagem em um único arquivo de texto.
+
+## Endpoint
+
+```
+https://docs.dihub.com.br/llms.txt
+```
+
+## Como usar
+
+### Cole no contexto
+
+Baixe o conteúdo e cole no prompt do seu modelo. Ele passa a responder com base na documentação completa da DiHub.
+
+```bash
+curl https://docs.dihub.com.br/llms.txt
+```
+
+### Ferramentas compatíveis
+
+Aponte qualquer ferramenta que suporte o padrão `llms.txt` para a URL do endpoint — o conteúdo é consumido automaticamente.
+
+## Quando preferir ao MCP
+
+- Modelos ou ferramentas que não falam MCP.
+- Sessões pontuais onde basta um único bloco de contexto.
+- Pipelines que ingerem documentação como texto plano.

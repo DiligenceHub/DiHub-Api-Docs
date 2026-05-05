@@ -1,0 +1,64 @@
+---
+title: 'Visão Geral'
+description: 'Ferramentas e contexto para integrar a API DiHub com IA.'
+---
+
+<div
+  style={{
+    position: "relative",
+    textAlign: "center",
+    padding: "64px 24px",
+    background: "linear-gradient(135deg, rgba(109,39,217,0.12) 0%, rgba(109,39,217,0.02) 100%)",
+    border: "1px solid rgba(109,39,217,0.15)",
+    borderRadius: "12px",
+    marginBottom: "40px"
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", marginBottom: "16px" }}>
+    <img src="/images/dihubinho.png" alt="DiHub" style={{ width: "48px", height: "48px" }} />
+    <h1 style={{ fontSize: "36px", fontWeight: "600", margin: 0 }}>
+      DiHub + IA
+    </h1>
+  </div>
+
+  <p style={{ maxWidth: "640px", margin: "0 auto", opacity: 0.7, fontSize: "17px", fontWeight: "300" }}>
+    Use a API DiHub diretamente em agentes de IA, editores assistidos e ferramentas de automação — sem fricção.
+  </p>
+</div>
+
+## O que está disponível
+
+<CardGroup cols={2}>
+  <Card title="MCP Server" icon="plug" href="/llms/mcp">
+    Conecte Claude Desktop, Cursor e qualquer cliente MCP à documentação da DiHub. O assistente consulta endpoints, parâmetros e exemplos em tempo real durante a conversa.
+  </Card>
+
+  <Card title="llms.txt" icon="file-lines" href="/llms/llms-txt">
+    Arquivo único com toda a documentação em formato otimizado para LLMs. Cole no contexto do modelo ou aponte ferramentas compatíveis com o padrão.
+  </Card>
+</CardGroup>
+
+---
+
+## Quando usar cada um
+
+|                    | MCP Server                                  | llms.txt                                       |
+| ------------------ | ------------------------------------------- | ---------------------------------------------- |
+| **Objetivo**       | Consulta dinâmica da documentação via IA    | Fornecer toda a documentação como contexto     |
+| **Ideal para**     | Assistentes contínuos (Claude, Cursor)      | Prompts pontuais ou ferramentas sem MCP        |
+| **Formato**        | Servidor MCP consultado em runtime          | Arquivo de texto consumido pelo modelo         |
+| **Configuração**   | URL do endpoint no cliente MCP              | Cole o conteúdo ou aponte a URL                |
+
+---
+
+## Ecossistema
+
+<CardGroup cols={2}>
+  <Card title="Referência da API" icon="book" href="/api-reference/overview">
+    Documentação completa dos endpoints da API DiHub.
+  </Card>
+
+  <Card title="Dashboard" icon="gauge" href="https://app.dihub.com.br">
+    Gere sua API key e gerencie sua conta.
+  </Card>
+</CardGroup>

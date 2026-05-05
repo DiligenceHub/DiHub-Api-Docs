@@ -1,0 +1,47 @@
+---
+title: 'MCP Server'
+description: 'Conecte assistentes de IA à documentação DiHub via Model Context Protocol.'
+icon: 'plug'
+---
+
+O **Model Context Protocol (MCP)** permite que assistentes de IA consultem a documentação da DiHub em tempo real. Ao invés de copiar trechos manualmente, o assistente busca endpoints, parâmetros e exemplos sob demanda.
+
+## Endpoint
+
+```
+https://docs.dihub.com.br/mcp
+```
+
+## Configuração
+
+### Claude Desktop
+
+Adicione ao `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "dihub": {
+      "url": "https://docs.dihub.com.br/mcp"
+    }
+  }
+}
+```
+
+### Cursor
+
+Em **Settings → MCP → Add new MCP server**, informe a URL acima.
+
+### Outros clientes
+
+Qualquer cliente compatível com MCP aceita a URL do endpoint diretamente.
+
+## O que o assistente passa a fazer
+
+- Consultar a referência completa da API DiHub durante a conversa.
+- Sugerir chamadas com parâmetros corretos e payloads válidos.
+- Explicar comportamento de endpoints sem precisar abrir a documentação.
+
+<Note>
+  O MCP serve a documentação — ele não executa chamadas reais à API. Para isso, use sua API key normalmente nos exemplos gerados pelo assistente.
+</Note>
