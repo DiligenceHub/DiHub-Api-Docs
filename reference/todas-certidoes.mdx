@@ -1,58 +1,85 @@
 ---
-title: 'Todas as certidões'
-description: 'Lista completa de certidões emitidas pela DiHub'
+title: 'Estados e Órgãos Emissores'
+description: 'Estados atendidos pela DiHub e órgãos emissores das certidões disponíveis'
 icon: 'list-check'
 ---
 
-A DiHub emite as seguintes certidões. A disponibilidade pode variar conforme o distrito (comarca) selecionado na emissão da diligência.
+<Info>
+  **Comarcas (distritos) disponíveis** são consultadas em tempo real via [`GET /diligences/districts`](/api-reference/diligences/districts). O endpoint retorna o mapa atualizado de estados e suas comarcas — use-o para preencher seletores e validar o campo `district` antes de emitir uma diligência.
+</Info>
 
-| Nome da Certidão | Órgão Emissor |
-|-----------------|---------------|
-| Análise DiHub | Análise DiHub |
-| Consulta Prévia Protestos - Cartórios de Protesto - CENPROT SP | CENPROT SP - Central de Protestos do Estado de São Paulo |
-| Certidão de Débitos Tributários Municipais - Divinópolis | DIVINÓPOLIS - Prefeitura de Divinópolis |
-| Certificado de Regularidade FGTS (Exclusivo PJ) | FGTS Caixa Econômica Federal |
-| Certidão de Procedimentos Extrajudiciais - Ministério Público Federal | MPF - Ministério Público Federal |
-| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPMG | MPMG - Ministério Público de Minas Gerais |
-| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPSP | MPSP - Ministério Público de São Paulo |
-| Certidão de Débitos Tributários Municipais - BH | PBH - Prefeitura de Belo Horizonte |
-| Certidão de Débitos Tributários Inscritos da Dívida Ativa do Estado de São Paulo | PGE SP - Procuradoria Geral do Estado de São Paulo |
-| Certidão de Débitos Tributários Municipais - Caratinga | Prefeitura de Caratinga |
-| Certidão de Débitos Tributários Federais e da Dívida Ativa da União | RF - Receita Federal |
-| Certidão de Débitos Tributários Municipais - São Paulo | SÃO PAULO - Prefeitura de São Paulo |
-| Certidão de Débitos Tributários Estaduais | SEFAZ MG - Secretaria de Estado de Fazenda de Minas Gerais |
-| Certidão de Débitos Tributários Estaduais - SP | SEFAZ SP - Secretaria de Estado de Fazenda de São Paulo |
-| Certidão Cível de Tutela e Curatela - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Criminal - 2ª instância - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Consulta Pública Processual - Justiça Estadual (PJe) | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Criminal - 1ª instância - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível - 2ª instância - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Consulta Pública Processual - Justiça Estadual - TJMG (e-Proc) | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível de Execução Cível - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível de Insolvência - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível de Falência e Concordata - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível - 1ª instância - Justiça Estadual | TJMG - Tribunal de Justiça de Minas Gerais |
-| Certidão Cível de Falência e Concordata - Justiça Estadual - TJSP | TJSP - Tribunal de Justiça de São Paulo |
-| Consulta Pública Processual - Justiça Estadual - TJSP (e-Proc) | TJSP - Tribunal de Justiça de São Paulo |
-| Certidão Cível - Justiça Estadual - TJSP | TJSP - Tribunal de Justiça de São Paulo |
-| Certidão Criminal - Justiça Estadual - TJSP | TJSP - Tribunal de Justiça de São Paulo |
-| Certidão de Execução Criminal - Justiça Estadual - TJSP | TJSP - Tribunal de Justiça de São Paulo |
-| Certidão Cível de Inventário, Arrolamento e Testamento - Justiça Estadual - TJSP | TJSP - Tribunal de Justiça de São Paulo |
-| Consulta Pública Processual - 1ª instância - Justiça Estadual - TJSP (e-SAJ) | TJSP - Tribunal de Justiça de São Paulo |
-| Consulta Pública Processual - 2ª instância - Justiça Estadual - TJSP (e-SAJ) | TJSP - Tribunal de Justiça de São Paulo |
-| Certidão Cível - 1ª e 2ª instância Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região - Tribunal Regional Federal da 1ª Região |
-| Consulta Pública Processual - Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região - Tribunal Regional Federal da 1ª Região |
-| Certidão Criminal - 1ª e 2ª instância Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região - Tribunal Regional Federal da 1ª Região |
-| Certidão Cível - Justiça Federal - TRF 3ª Região | TRF 3ª Região - Tribunal Regional Federal da 3ª Região |
-| Certidão Criminal - Justiça Federal - TRF 3ª Região | TRF 3ª Região - Tribunal Regional Federal da 3ª Região |
-| Certidão Criminal - 1ª e 2ª instância Justiça Federal - TRF 6ª Região (e-Proc) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Consulta Pública Processual - Justiça Federal - TRF 6ª Região (e-Proc) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Consulta Pública Processual - Justiça Federal - TRF 6ª Região (PJe) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Certidão Cível - 1ª e 2ª instância Justiça Federal - TRF 6ª Região (e-Proc) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Certidão Cível - 1ª e 2ª instância Justiça Federal - TRF 6ª Região (PJe) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Certidão Criminal - 1ª e 2ª instância Justiça Federal - TRF 6ª Região (PJe) | TRF 6ª Região - Tribunal Regional Federal da 6ª Região |
-| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 15ª Região | TRT 15ª Região - Tribunal Regional do Trabalho da 15ª Região |
-| Certidão de Ações Trabalhistas (Processos Físicos) - Justiça do Trabalho - TRT 2ª Região | TRT 2ª Região - Tribunal Regional do Trabalho da 2ª Região |
-| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 2ª Região | TRT 2ª Região - Tribunal Regional do Trabalho da 2ª Região |
-| Certidão de Ações Trabalhistas - Justiça do Trabalho | TRT 3ª Região - Tribunal Regional do Trabalho da 3ª Região |
-| Certidão de Débitos Trabalhistas | TST - Tribunal Superior do Trabalho |
+## Estados atendidos
+
+A DiHub atende atualmente os seguintes estados, além de órgãos de abrangência federal. A relação de **comarcas por estado** é dinâmica — consulte o endpoint acima para a lista atualizada.
+
+| UF | Estado |
+|----|--------|
+| MG | Minas Gerais |
+| SP | São Paulo |
+| GO | Goiás |
+
+## Órgãos Emissores
+
+### Federais
+
+| Sigla | Órgão |
+|-------|-------|
+| RF | Receita Federal |
+| MPF | Ministério Público Federal |
+| FGTS | Caixa Econômica Federal — Regularidade FGTS |
+| TST | Tribunal Superior do Trabalho |
+
+### Justiça Federal (Tribunais Regionais)
+
+| Sigla | Órgão |
+|-------|-------|
+| TRF 1ª Região | Tribunal Regional Federal da 1ª Região |
+| TRF 3ª Região | Tribunal Regional Federal da 3ª Região |
+| TRF 6ª Região | Tribunal Regional Federal da 6ª Região |
+
+### Justiça do Trabalho (Tribunais Regionais)
+
+| Sigla | Órgão |
+|-------|-------|
+| TRT 2ª Região | Tribunal Regional do Trabalho da 2ª Região |
+| TRT 3ª Região | Tribunal Regional do Trabalho da 3ª Região |
+| TRT 15ª Região | Tribunal Regional do Trabalho da 15ª Região |
+
+### Minas Gerais (MG)
+
+| Sigla | Órgão |
+|-------|-------|
+| TJMG | Tribunal de Justiça de Minas Gerais |
+| SEFAZ MG | Secretaria de Estado de Fazenda de Minas Gerais |
+| MPMG | Ministério Público de Minas Gerais |
+| PBH | Prefeitura de Belo Horizonte |
+| Divinópolis | Prefeitura de Divinópolis |
+| Caratinga | Prefeitura de Caratinga |
+
+### São Paulo (SP)
+
+| Sigla | Órgão |
+|-------|-------|
+| TJSP | Tribunal de Justiça de São Paulo |
+| SEFAZ SP | Secretaria de Estado de Fazenda de São Paulo |
+| MPSP | Ministério Público de São Paulo |
+| PGE SP | Procuradoria Geral do Estado de São Paulo |
+| Prefeitura SP | Prefeitura de São Paulo (capital) |
+| CENPROT SP | Central de Protestos do Estado de São Paulo |
+
+### Goiás (GO)
+
+| Sigla | Órgão |
+|-------|-------|
+| TJGO | Tribunal de Justiça de Goiás |
+
+### DiHub
+
+| Sigla | Descrição |
+|-------|-----------|
+| Análise DiHub | Análise consolidada gerada pela própria DiHub |
+
+## Próximos passos
+
+- **Listar comarcas disponíveis** → [`GET /diligences/districts`](/api-reference/diligences/districts)
+- **Emitir uma diligência** → [`POST /diligences/emit`](/api-reference/diligences/emit)

@@ -32,7 +32,9 @@
   "paths": {
     "/credits/balance": {
       "get": {
-        "tags": ["Créditos"],
+        "tags": [
+          "Créditos"
+        ],
         "summary": "Obter saldo de créditos",
         "description": "Retorna o saldo total de créditos do usuário autenticado, incluindo créditos pessoais e da organização",
         "operationId": "getBalance",
@@ -70,7 +72,9 @@
     },
     "/diligences": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Listar diligências",
         "description": "Retorna a lista de IDs de todas as diligências associadas à conta autenticada, em ordem decrescente de criação.",
         "operationId": "listDiligences",
@@ -109,9 +113,66 @@
         }
       }
     },
+    "/diligences/districts": {
+      "get": {
+        "tags": [
+          "Diligências"
+        ],
+        "summary": "Listar estados e comarcas disponíveis",
+        "description": "Retorna a lista completa de estados (UF) e comarcas (distritos) disponíveis para emissão de diligências. As comarcas vêm agrupadas pela sigla do estado.",
+        "operationId": "listDistricts",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mapa de estados para suas comarcas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Objeto cujas chaves são siglas de estados (UF) e os valores são listas de comarcas disponíveis.",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "example": {
+                    "MG": [
+                      "BELO_HORIZONTE",
+                      "CARATINGA",
+                      "DIVINOPOLIS",
+                      "UBERLANDIA"
+                    ],
+                    "SP": [
+                      "CAMPINAS",
+                      "SAO_PAULO"
+                    ],
+                    "GO": [
+                      "GOIANIA"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/diligences/emit": {
       "post": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Emitir diligência",
         "description": "Cria uma nova diligência. Suporta três cenários principais:\n\n1. **Diligência completa com certidões**: Requer distritos e opcionalmente inclui análise de crédito\n2. **Apenas análise de crédito**: Realiza somente análise de crédito sem emissão de certidões\n3. **Combinado**: Diligência completa com análise de crédito adicional",
         "operationId": "emitDiligence",
@@ -252,7 +313,9 @@
                       "message": "Validation Error",
                       "details": [
                         {
-                          "path": ["document"],
+                          "path": [
+                            "document"
+                          ],
                           "message": "O documento deve ter 11 ou 14 caracteres"
                         }
                       ]
@@ -264,7 +327,9 @@
                       "message": "Validation Error",
                       "details": [
                         {
-                          "path": ["districts"],
+                          "path": [
+                            "districts"
+                          ],
                           "message": "Distritos são obrigatórios quando não é apenas Análise DiHub"
                         }
                       ]
@@ -326,7 +391,9 @@
     },
     "/diligences/{id}/status": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Check diligence status",
         "description": "Returns the current status of a diligence, including subject info, progress (finished/total certificates), and whether it includes credit analysis",
         "operationId": "getDiligenceStatus",
@@ -382,7 +449,9 @@
     },
     "/diligences/{id}/certificates": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "List diligence certificates",
         "description": "Returns the list of certificates for a diligence, grouped by court/issuer",
         "operationId": "getDiligenceCertificates",
@@ -438,7 +507,9 @@
     },
     "/diligences/{id}/download-pdf": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Download diligence as PDF",
         "description": "Downloads the diligence report as PDF. When mergeCertificates=1, merges all completed certificates into a single PDF. When mergeCertificates=0, returns the first completed certificate PDF.",
         "operationId": "downloadDiligencePdf",
@@ -464,7 +535,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["0", "1"],
+              "enum": [
+                "0",
+                "1"
+              ],
               "default": "0"
             },
             "description": "1 to merge all certificates into one PDF, 0 to return first certificate only"
@@ -503,7 +577,9 @@
     },
     "/diligences/{id}/download-zip": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Download diligence as ZIP",
         "description": "Downloads all diligence certificates and report as a ZIP archive",
         "operationId": "downloadDiligenceZip",
@@ -557,7 +633,9 @@
     },
     "/certificate/{id}/download-pdf": {
       "get": {
-        "tags": ["Diligências"],
+        "tags": [
+          "Diligências"
+        ],
         "summary": "Download single certificate PDF",
         "description": "Downloads a specific certificate by its ID. Use certificate IDs from GET /diligences/{id}/certificates response.",
         "operationId": "downloadCertificatePdf",
@@ -625,7 +703,9 @@
     "schemas": {
       "EmitDiligenceRequest": {
         "type": "object",
-        "required": ["document"],
+        "required": [
+          "document"
+        ],
         "properties": {
           "document": {
             "type": "string",
@@ -706,7 +786,11 @@
             "properties": {
               "label": {
                 "type": "string",
-                "enum": ["Concluída", "Em andamento", "Falha"]
+                "enum": [
+                  "Concluída",
+                  "Em andamento",
+                  "Falha"
+                ]
               },
               "finishedCertificates": {
                 "type": "integer"
@@ -765,12 +849,20 @@
                   },
                   "emissionResultStatus": {
                     "type": "string",
-                    "enum": ["Em andamento", "Concluída", "Falha"]
+                    "enum": [
+                      "Em andamento",
+                      "Concluída",
+                      "Falha"
+                    ]
                   },
                   "certificateStatus": {
                     "type": "string",
                     "nullable": true,
-                    "enum": ["Pendência potencial", "Positiva", "Negativa"],
+                    "enum": [
+                      "Pendência potencial",
+                      "Positiva",
+                      "Negativa"
+                    ],
                     "description": "Status da certidão. Ausente enquanto a emissão não foi concluída."
                   }
                 }
@@ -789,7 +881,10 @@
       },
       "StateDistrict": {
         "type": "object",
-        "required": ["state", "district"],
+        "required": [
+          "state",
+          "district"
+        ],
         "properties": {
           "state": {
             "type": "string",
