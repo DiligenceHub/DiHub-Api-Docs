@@ -1,0 +1,26 @@
+---
+title: 'Estados e Comarcas disponíveis'
+description: 'Retorna a lista completa de estados (UF) e comarcas (distritos) disponíveis para emissão de diligências'
+openapi: 'GET /diligences/districts'
+---
+
+## Como usar
+
+Consulte este endpoint sempre que precisar saber em quais estados e comarcas a DiHub atende no momento. A resposta vem como um objeto onde a chave é a sigla do estado (UF) e o valor é a lista de comarcas disponíveis naquele estado.
+
+Use o resultado para preencher seletores na sua aplicação ou para validar os campos `state` e `district` antes de chamar `POST /diligences/emit`.
+
+## Exemplo de resposta
+
+```json
+{
+  "MG": ["BELO_HORIZONTE", "CARATINGA", "DIVINOPOLIS", "UBERLANDIA"],
+  "SP": ["CAMPINAS", "SAO_PAULO"],
+  "GO": ["GOIANIA"]
+}
+```
+
+## Próximos passos
+
+- **Emitir diligência** → `POST /diligences/emit` usando os valores retornados nos campos `state` e `district`.
+- **Estados e órgãos emissores** → veja [Estados e Órgãos Emissores](/reference/todas-certidoes) para a lista de estados atendidos e dos órgãos que emitem certidões.

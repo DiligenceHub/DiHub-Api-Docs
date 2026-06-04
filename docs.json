@@ -77,6 +77,7 @@
             "pages": [
               "api-reference/credits/balance",
               "api-reference/diligences/list",
+              "api-reference/diligences/districts",
               "api-reference/diligences/emit",
               "api-reference/diligences/status",
               "api-reference/diligences/certificates",
