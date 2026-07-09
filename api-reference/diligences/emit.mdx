@@ -73,7 +73,7 @@ O endpoint suporta três cenários principais:
 
 <AccordionGroup>
   <Accordion title="400 - Dados de entrada inválidos">
-    O `details` traz `path` e `message` indicando o campo incorreto. Verifique formato de CPF/CNPJ (apenas números) e se `districts` está preenchido quando necessário.
+    O `details` traz `path` e `message` indicando o campo incorreto. Verifique o formato do CPF (11 dígitos) ou CNPJ (14 caracteres — pode ser alfanumérico a partir de jul/2026) e se `districts` está preenchido quando necessário.
   </Accordion>
   <Accordion title="400 - Distritos obrigatórios">
     Enviado quando `creditAnalysisOnly` é `false` e `districts` está ausente ou vazio. Informe pelo menos uma comarca.
