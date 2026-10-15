@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "DiHub API",
-    "description": "API para acessar as funcionalidades da plataforma DiHub",
+    "description": "API pública da DiHub para emitir diligências, acompanhar certidões e baixar os arquivos gerados.",
     "version": "1.0.0",
     "contact": {
       "name": "Suporte DiHub",
@@ -22,11 +22,15 @@
   "tags": [
     {
       "name": "Créditos",
-      "description": "Gestão de saldo de créditos"
+      "description": "Saldo de créditos da conta"
     },
     {
       "name": "Diligências",
-      "description": "Emissão de diligências e gestão de certidões"
+      "description": "Emissão e acompanhamento de diligências"
+    },
+    {
+      "name": "Certidões",
+      "description": "Download de certidões individuais"
     }
   ],
   "paths": {
@@ -35,8 +39,8 @@
         "tags": [
           "Créditos"
         ],
-        "summary": "Obter saldo de créditos",
-        "description": "Retorna o saldo total de créditos do usuário autenticado, incluindo créditos pessoais e da organização",
+        "summary": "Consultar saldo de créditos",
+        "description": "Retorna o saldo de créditos disponíveis (não vencidos) do usuário dono do token somado ao da organização dele, se houver.",
         "operationId": "getBalance",
         "security": [
           {
@@ -45,17 +49,39 @@
         ],
         "responses": {
           "200": {
-            "description": "Saldo de créditos obtido com sucesso",
+            "description": "Saldo consultado.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
                   "properties": {
-                    "balance": {
-                      "type": "number",
-                      "description": "Total de créditos disponíveis (usuário + organização)",
-                      "example": 15.5
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "balance": {
+                          "type": "number",
+                          "description": "Créditos disponíveis (usuário + organização). Pode ter casa decimal, ex.: 15.5.",
+                          "example": 15.5
+                        }
+                      }
                     }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "balance": 15.5
                   }
                 }
               }
@@ -76,7 +102,7 @@
           "Diligências"
         ],
         "summary": "Listar diligências",
-        "description": "Retorna a lista de IDs de todas as diligências associadas à conta autenticada, em ordem decrescente de criação.",
+        "description": "Retorna os IDs das diligências criadas pelo usuário dono do token, da mais recente para a mais antiga. Não há paginação nem filtro.",
         "operationId": "listDiligences",
         "security": [
           {
@@ -85,21 +111,48 @@
         ],
         "responses": {
           "200": {
-            "description": "Lista de diligências obtida com sucesso",
+            "description": "Lista de diligências.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "description": "Identificador único da diligência",
-                        "example": "550e8400-e29b-41d4-a716-446655440000"
+                  "type": "object",
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID da diligência"
+                          }
+                        }
                       }
                     }
                   }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": [
+                    {
+                      "id": "550e8400-e29b-41d4-a716-446655440000"
+                    },
+                    {
+                      "id": "6f1c2a9e-3b7d-4e8a-9c2f-1a2b3c4d5e6f"
+                    }
+                  ]
                 }
               }
             }
@@ -118,8 +171,8 @@
         "tags": [
           "Diligências"
         ],
-        "summary": "Listar estados e comarcas disponíveis",
-        "description": "Retorna a lista completa de estados (UF) e comarcas (distritos) disponíveis para emissão de diligências. As comarcas vêm agrupadas pela sigla do estado.",
+        "summary": "Listar estados e comarcas",
+        "description": "Retorna as comarcas cadastradas na DiHub, agrupadas por UF e em ordem alfabética. Os valores são exatamente os que `POST /diligences/emit` aceita em `state` e `district` (maiúsculas, sem acento, espaços trocados por `_`).\n\nA emissão pela API está liberada hoje para BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP. A lista também traz comarcas de UFs que ainda não estão liberadas na API; pedir emissão nelas retorna erro. Veja [Certidões e emissores](/reference/todas-certidoes).",
         "operationId": "listDistricts",
         "security": [
           {
@@ -128,31 +181,63 @@
         ],
         "responses": {
           "200": {
-            "description": "Mapa de estados para suas comarcas",
+            "description": "Comarcas agrupadas por UF.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Objeto cujas chaves são siglas de estados (UF) e os valores são listas de comarcas disponíveis.",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Chave = UF; valor = lista de comarcas daquela UF.",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     }
-                  },
-                  "example": {
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "BA": [
+                      "SALVADOR"
+                    ],
+                    "DF": [
+                      "BRASILIA"
+                    ],
+                    "GO": [
+                      "ANAPOLIS",
+                      "GOIANIA"
+                    ],
                     "MG": [
                       "BELO_HORIZONTE",
                       "CARATINGA",
                       "DIVINOPOLIS",
                       "UBERLANDIA"
                     ],
+                    "RJ": [
+                      "RIO_DE_JANEIRO"
+                    ],
+                    "RS": [
+                      "PORTO_ALEGRE"
+                    ],
                     "SP": [
                       "CAMPINAS",
                       "SAO_PAULO"
-                    ],
-                    "GO": [
-                      "GOIANIA"
                     ]
                   }
                 }
@@ -174,7 +259,7 @@
           "Diligências"
         ],
         "summary": "Emitir diligência",
-        "description": "Cria uma nova diligência. Suporta três cenários principais:\n\n1. **Diligência completa com certidões**: Requer distritos e opcionalmente inclui análise de crédito\n2. **Apenas análise de crédito**: Realiza somente análise de crédito sem emissão de certidões\n3. **Combinado**: Diligência completa com análise de crédito adicional",
+        "description": "Cria uma diligência e debita os créditos na hora. A emissão das certidões é assíncrona: acompanhe por `GET /diligences/{id}/status`.\n\nTrês cenários:\n\n1. **Certidões**: `districts` com 1 ou 2 comarcas.\n2. **Certidões + Análise DiHub**: `districts` + `creditAnalysis: true`.\n3. **Só Análise DiHub**: `creditAnalysisOnly: true`, sem `districts`.\n\nUFs liberadas: BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP. Consulte as comarcas válidas em `GET /diligences/districts`.",
         "operationId": "emitDiligence",
         "security": [
           {
@@ -190,8 +275,8 @@
               },
               "examples": {
                 "fullDiligenceCPF": {
-                  "summary": "Diligência completa para CPF com um distrito",
-                  "description": "Diligência padrão para pessoa física (CPF) em um distrito. Custo: 1 crédito",
+                  "summary": "CPF, uma comarca",
+                  "description": "Custo: 1 crédito.",
                   "value": {
                     "document": "12345678901",
                     "documentIdentity": "MG12345678",
@@ -204,10 +289,10 @@
                   }
                 },
                 "fullDiligenceCNPJ": {
-                  "summary": "Diligência completa para CNPJ com um distrito",
-                  "description": "Diligência padrão para pessoa jurídica (CNPJ) em um distrito. Custo: 1 crédito",
+                  "summary": "CNPJ, uma comarca",
+                  "description": "Custo: 1 crédito.",
                   "value": {
-                    "document": "12345678000190",
+                    "document": "12345678000195",
                     "districts": [
                       {
                         "state": "SP",
@@ -217,8 +302,8 @@
                   }
                 },
                 "fullDiligenceCNPJAlfanumerico": {
-                  "summary": "Diligência completa para CNPJ alfanumérico (jul/2026+)",
-                  "description": "CNPJ alfanumérico: 12 caracteres A-Z/0-9 + 2 dígitos verificadores. Custo: 1 crédito",
+                  "summary": "CNPJ alfanumérico, uma comarca",
+                  "description": "12 caracteres A-Z/0-9 + 2 dígitos verificadores numéricos. Custo: 1 crédito.",
                   "value": {
                     "document": "12ABC34501DE35",
                     "districts": [
@@ -230,8 +315,8 @@
                   }
                 },
                 "multipleDistrictsSameState": {
-                  "summary": "Múltiplos distritos no mesmo estado",
-                  "description": "Diligência cobrindo dois distritos no mesmo estado (ex: MG). Custo: 1 crédito",
+                  "summary": "Duas comarcas no mesmo estado",
+                  "description": "Custo: 1 crédito.",
                   "value": {
                     "document": "12345678901",
                     "districts": [
@@ -247,8 +332,8 @@
                   }
                 },
                 "multipleDistrictsDifferentStates": {
-                  "summary": "Múltiplos distritos em estados diferentes",
-                  "description": "Diligência cobrindo distritos em estados diferentes. Custo: 2 créditos (1 base + 1 para múltiplos estados)",
+                  "summary": "Duas comarcas em estados diferentes",
+                  "description": "Custo: 2 créditos.",
                   "value": {
                     "document": "12345678901",
                     "districts": [
@@ -264,8 +349,8 @@
                   }
                 },
                 "withCreditAnalysis": {
-                  "summary": "Diligência completa com análise de crédito",
-                  "description": "Combina emissão de certidões com análise de crédito. Custo: 1,5 créditos (1 para diligência + 0,5 para análise). Nota: Análise de crédito só é realizada se o titular tiver 18+ anos.",
+                  "summary": "Certidões + Análise DiHub",
+                  "description": "Custo: 1,5 crédito. Se o titular for menor de 18 anos, a análise não é feita e o custo cai para 1 crédito.",
                   "value": {
                     "document": "12345678901",
                     "documentIdentity": "MG12345678",
@@ -279,8 +364,8 @@
                   }
                 },
                 "creditAnalysisOnly": {
-                  "summary": "Apenas análise de crédito (sem certidões)",
-                  "description": "Realiza somente análise de crédito sem emitir certidões. Custo: 1 crédito. Requer que o titular tenha 18+ anos.",
+                  "summary": "Só Análise DiHub",
+                  "description": "Custo: 1 crédito. Titular precisa ter 18 anos ou mais.",
                   "value": {
                     "document": "12345678901",
                     "creditAnalysisOnly": true
@@ -292,54 +377,97 @@
         },
         "responses": {
           "200": {
-            "description": "Diligência criada com sucesso",
+            "description": "Diligência criada e créditos debitados.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
                   "properties": {
-                    "diligenceId": {
-                      "type": "string",
-                      "description": "Identificador único da diligência criada",
-                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
                     },
                     "message": {
                       "type": "string",
-                      "example": "Diligence emitted successfully"
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "diligenceId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "description": "ID da diligência criada"
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Diligence emitted successfully"
+                        }
+                      }
                     }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "diligenceId": "550e8400-e29b-41d4-a716-446655440000",
+                    "message": "Diligence emitted successfully"
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Erro de validação ou violação de regra de negócio",
+            "description": "Corpo inválido, comarca inexistente, créditos insuficientes ou titular menor de idade na Análise DiHub. Nenhum crédito é debitado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "examples": {
-                  "validationError": {
-                    "summary": "Dados de entrada inválidos",
+                  "invalidDocument": {
+                    "summary": "Documento inválido",
                     "value": {
-                      "message": "Validation Error",
-                      "details": [
+                      "statusCode": 400,
+                      "message": "O documento deve ter 11 ou 14 caracteres (CPF ou CNPJ)",
+                      "data": [
                         {
+                          "code": "custom",
                           "path": [
                             "document"
                           ],
-                          "message": "Documento inválido: CPF deve ter 11 dígitos numéricos; CNPJ deve ter 12 caracteres (A-Z/0-9) + 2 dígitos verificadores válidos"
+                          "message": "O documento deve ter 11 ou 14 caracteres (CPF ou CNPJ)"
+                        }
+                      ]
+                    }
+                  },
+                  "invalidCnpjDv": {
+                    "summary": "CNPJ com dígito verificador errado",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "CNPJ inválido: dígito verificador não confere",
+                      "data": [
+                        {
+                          "code": "custom",
+                          "path": [
+                            "document"
+                          ],
+                          "message": "CNPJ inválido: dígito verificador não confere"
                         }
                       ]
                     }
                   },
                   "missingDistricts": {
-                    "summary": "Distritos obrigatórios para requisições que não são apenas análise",
+                    "summary": "`districts` ausente",
                     "value": {
-                      "message": "Validation Error",
-                      "details": [
+                      "statusCode": 400,
+                      "message": "Distritos são obrigatórios quando não é apenas Análise DiHub",
+                      "data": [
                         {
+                          "code": "invalid_value",
                           "path": [
                             "districts"
                           ],
@@ -348,21 +476,28 @@
                       ]
                     }
                   },
-                  "insufficientCredits": {
-                    "summary": "Créditos insuficientes",
+                  "tooManyDistricts": {
+                    "summary": "Mais de 2 comarcas",
                     "value": {
-                      "message": "Not enough credits",
-                      "details": {
-                        "requiredCredits": 2,
-                        "totalCreditsAmount": 1
-                      }
+                      "statusCode": 400,
+                      "message": "Máximo de 2 distritos",
+                      "data": [
+                        {
+                          "code": "too_big",
+                          "path": [
+                            "districts"
+                          ],
+                          "message": "Máximo de 2 distritos"
+                        }
+                      ]
                     }
                   },
                   "invalidDistrict": {
-                    "summary": "Distrito inválido para o estado",
+                    "summary": "Comarca não existe na UF",
                     "value": {
+                      "statusCode": 400,
                       "message": "Invalid district INVALID_DISTRICT in state MG",
-                      "details": {
+                      "data": {
                         "district": {
                           "state": "MG",
                           "district": "INVALID_DISTRICT"
@@ -370,10 +505,23 @@
                       }
                     }
                   },
-                  "underage": {
-                    "summary": "Análise de crédito não permitida para menores",
+                  "insufficientCredits": {
+                    "summary": "Créditos insuficientes",
                     "value": {
-                      "message": "Análise não realizada: usuário menor de idade."
+                      "statusCode": 400,
+                      "message": "Not enough credits",
+                      "data": {
+                        "requiredCredits": 2,
+                        "totalCreditsAmount": 1
+                      }
+                    }
+                  },
+                  "underage": {
+                    "summary": "Só Análise DiHub para menor de idade",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Análise não realizada: usuário menor de idade.",
+                      "data": null
                     }
                   }
                 }
@@ -384,20 +532,49 @@
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "404": {
-            "description": "Documento do titular não encontrado",
+            "description": "CPF ou CNPJ não encontrado nas bases cadastrais.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "message": "Subject Document Not Found"
+                  "statusCode": 404,
+                  "message": "Subject Document Not Found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CPF sem data de nascimento nas bases cadastrais.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 422,
+                  "message": "Data de nascimento não disponível para o CPF informado.",
+                  "data": null
                 }
               }
             }
           },
           "500": {
-            "$ref": "#/components/responses/InternalServerError"
+            "description": "Erro interno. Também ocorre ao pedir uma UF fora da lista liberada que tenha comarca cadastrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal Server Error",
+                  "data": null
+                }
+              }
+            }
           }
         }
       }
@@ -407,8 +584,8 @@
         "tags": [
           "Diligências"
         ],
-        "summary": "Check diligence status",
-        "description": "Returns the current status of a diligence, including subject info, progress (finished/total certificates), and whether it includes credit analysis",
+        "summary": "Consultar status da diligência",
+        "description": "Retorna o titular (documento mascarado), local, status geral e o progresso (certidões concluídas / total).",
         "operationId": "getDiligenceStatus",
         "security": [
           {
@@ -424,16 +601,51 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "Diligence ID"
+            "description": "ID da diligência"
           }
         ],
         "responses": {
           "200": {
-            "description": "Diligence status retrieved successfully",
+            "description": "Status da diligência.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DiligenceStatusResponse"
+                  "type": "object",
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DiligenceStatusResponse"
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "subject": {
+                      "name": "FULANO DE TAL",
+                      "document": "123.***.***-01"
+                    },
+                    "state": "MG",
+                    "comarca": "BELO_HORIZONTE",
+                    "status": {
+                      "label": "Em andamento",
+                      "finishedCertificates": 12,
+                      "totalCertificates": 20
+                    },
+                    "emissionDate": "2026-10-15T13:45:00.000Z",
+                    "haveAnalysisOfCredit": false
+                  }
                 }
               }
             }
@@ -441,15 +653,20 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenDiligence"
+          },
           "404": {
-            "description": "Diligence not found",
+            "description": "Diligência não encontrada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "message": "Diligence not found"
+                  "statusCode": 404,
+                  "message": "Diligence not found",
+                  "data": null
                 }
               }
             }
@@ -465,8 +682,8 @@
         "tags": [
           "Diligências"
         ],
-        "summary": "List diligence certificates",
-        "description": "Returns the list of certificates for a diligence, grouped by court/issuer",
+        "summary": "Listar certidões da diligência",
+        "description": "Retorna as certidões da diligência agrupadas por emissor, com o status de emissão e o resultado de cada uma. Use o `id` de cada certidão em `GET /certificate/{id}/download-pdf`.",
         "operationId": "getDiligenceCertificates",
         "security": [
           {
@@ -482,16 +699,72 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "Diligence ID"
+            "description": "ID da diligência"
           }
         ],
         "responses": {
           "200": {
-            "description": "Certificates list retrieved successfully",
+            "description": "Certidões agrupadas por emissor.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DiligenceCertificatesResponse"
+                  "type": "object",
+                  "description": "Envelope padrão de sucesso. O conteúdo do endpoint vem em `data`.",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DiligenceCertificatesResponse"
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "subject": {
+                      "name": "FULANO DE TAL",
+                      "document": "123.***.***-01"
+                    },
+                    "state": "MG",
+                    "district": "BELO_HORIZONTE",
+                    "diligenceStatus": "IN_PROGRESS",
+                    "certificates": {
+                      "RF - Receita Federal": [
+                        {
+                          "id": "9b2d7c1e-4f3a-4b8e-a1d2-3c4b5a6f7e8d",
+                          "certificateName": "Certidão de Débitos Tributários Federais e da Dívida Ativa da União",
+                          "emissionResultStatus": "Concluída",
+                          "certificateStatus": "Negativa"
+                        }
+                      ],
+                      "TJMG - Tribunal de Justiça de Minas Gerais": [
+                        {
+                          "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+                          "certificateName": "Certidão Cível - 1ª instância - Justiça Estadual - TJMG",
+                          "emissionResultStatus": "Concluída",
+                          "certificateStatus": "Positiva"
+                        },
+                        {
+                          "id": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b",
+                          "certificateName": "Certidão Criminal - 1ª instância - Justiça Estadual - TJMG",
+                          "emissionResultStatus": "Em andamento",
+                          "certificateStatus": null
+                        }
+                      ]
+                    },
+                    "requester": {
+                      "name": "Maria Souza"
+                    }
+                  }
                 }
               }
             }
@@ -499,15 +772,20 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenDiligence"
+          },
           "404": {
-            "description": "Diligence not found",
+            "description": "Diligência não encontrada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "message": "Diligence not found"
+                  "statusCode": 404,
+                  "message": "Diligence not found",
+                  "data": null
                 }
               }
             }
@@ -523,8 +801,8 @@
         "tags": [
           "Diligências"
         ],
-        "summary": "Download diligence as PDF",
-        "description": "Downloads the diligence report as PDF. When mergeCertificates=1, merges all completed certificates into a single PDF. When mergeCertificates=0, returns the first completed certificate PDF.",
+        "summary": "Gerar PDF da diligência",
+        "description": "Gera o relatório da diligência em PDF e devolve um link temporário para download.\n\n- `mergeCertificates=0` (padrão): só o relatório.\n- `mergeCertificates=1`: relatório + todas as certidões concluídas num PDF único. Se nenhuma certidão mudou desde a última geração, devolve o arquivo já pronto.\n\nExige ao menos uma certidão concluída.",
         "operationId": "downloadDiligencePdf",
         "security": [
           {
@@ -540,7 +818,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "Diligence ID"
+            "description": "ID da diligência"
           },
           {
             "name": "mergeCertificates",
@@ -554,17 +832,52 @@
               ],
               "default": "0"
             },
-            "description": "1 to merge all certificates into one PDF, 0 to return first certificate only"
+            "description": "`1` junta as certidões concluídas ao relatório num PDF único; `0` gera só o relatório."
           }
         ],
         "responses": {
           "200": {
-            "description": "PDF file",
+            "description": "Link do PDF.",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
-                  "type": "string",
-                  "format": "binary"
+                  "type": "object",
+                  "description": "Link temporário para baixar o arquivo. Esta resposta **não** usa o envelope `statusCode`/`data`.",
+                  "properties": {
+                    "downloadUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "URL pré-assinada do arquivo."
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Momento em que a URL deixa de valer. Baixe o arquivo antes disso ou chame o endpoint de novo."
+                    }
+                  },
+                  "required": [
+                    "downloadUrl",
+                    "expiresAt"
+                  ]
+                },
+                "example": {
+                  "downloadUrl": "https://...amazonaws.com/550e8400-e29b-41d4-a716-446655440000/PDF-Unico.pdf?X-Amz-Signature=...",
+                  "expiresAt": "2026-10-15T14:10:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`mergeCertificates` diferente de `0` ou `1`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "mergeCertificates must be 0 or 1",
+                  "data": null
                 }
               }
             }
@@ -572,12 +885,33 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenDiligence"
+          },
           "404": {
-            "description": "Diligence not found or no completed certificates",
+            "description": "Diligência não encontrada ou sem certidão concluída.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "Diligência não encontrada",
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Diligence not found",
+                      "data": null
+                    }
+                  },
+                  "noCompleted": {
+                    "summary": "Nenhuma certidão concluída",
+                    "value": {
+                      "statusCode": 404,
+                      "message": "No completed certificates available for download",
+                      "data": null
+                    }
+                  }
                 }
               }
             }
@@ -593,8 +927,8 @@
         "tags": [
           "Diligências"
         ],
-        "summary": "Download diligence as ZIP",
-        "description": "Downloads all diligence certificates and report as a ZIP archive",
+        "summary": "Gerar ZIP da diligência",
+        "description": "Gera um ZIP com o relatório e os PDFs das certidões disponíveis e devolve um link temporário para download. Cada chamada gera um arquivo novo.",
         "operationId": "downloadDiligenceZip",
         "security": [
           {
@@ -610,17 +944,37 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "Diligence ID"
+            "description": "ID da diligência"
           }
         ],
         "responses": {
           "200": {
-            "description": "ZIP file",
+            "description": "Link do ZIP.",
             "content": {
-              "application/zip": {
+              "application/json": {
                 "schema": {
-                  "type": "string",
-                  "format": "binary"
+                  "type": "object",
+                  "description": "Link temporário para baixar o arquivo. Esta resposta **não** usa o envelope `statusCode`/`data`.",
+                  "properties": {
+                    "downloadUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "URL pré-assinada do arquivo."
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Momento em que a URL deixa de valer. Baixe o arquivo antes disso ou chame o endpoint de novo."
+                    }
+                  },
+                  "required": [
+                    "downloadUrl",
+                    "expiresAt"
+                  ]
+                },
+                "example": {
+                  "downloadUrl": "https://...amazonaws.com/zipFolders/550e8400-e29b-41d4-a716-446655440000/<uuid>.zip?X-Amz-Signature=...",
+                  "expiresAt": "2026-10-15T14:10:00.000Z"
                 }
               }
             }
@@ -628,12 +982,17 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
-          "404": {
-            "description": "Diligence not found",
+          "403": {
+            "description": "Diligência não encontrada ou de outro usuário fora da sua organização. Este endpoint responde 403 também quando o ID não existe.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Diligence not found",
+                  "data": null
                 }
               }
             }
@@ -647,10 +1006,10 @@
     "/certificate/{id}/download-pdf": {
       "get": {
         "tags": [
-          "Diligências"
+          "Certidões"
         ],
-        "summary": "Download single certificate PDF",
-        "description": "Downloads a specific certificate by its ID. Use certificate IDs from GET /diligences/{id}/certificates response.",
+        "summary": "Baixar PDF de uma certidão",
+        "description": "Devolve o PDF de uma certidão (binário, `Content-Disposition: attachment`). Use o `id` retornado em `GET /diligences/{id}/certificates`. O caminho é `/certificate`, no singular.",
         "operationId": "downloadCertificatePdf",
         "security": [
           {
@@ -666,12 +1025,12 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "Certificate ID"
+            "description": "ID da certidão (campo `id` em `GET /diligences/{id}/certificates`)"
           }
         ],
         "responses": {
           "200": {
-            "description": "PDF file",
+            "description": "Arquivo PDF.",
             "content": {
               "application/pdf": {
                 "schema": {
@@ -684,15 +1043,20 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenDiligence"
+          },
           "404": {
-            "description": "Certificate not found",
+            "description": "Certidão não encontrada ou ainda sem arquivo.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "message": "Certificate not found"
+                  "statusCode": 404,
+                  "message": "Certificate not found",
+                  "data": null
                 }
               }
             }
@@ -710,7 +1074,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-Api-Token",
-        "description": "Chave de API para autenticação. Envie o token no header X-Api-Token."
+        "description": "Token de API gerado no dashboard, enviado no header `X-Api-Token`."
       }
     },
     "schemas": {
@@ -722,23 +1086,19 @@
         "properties": {
           "document": {
             "type": "string",
-            "description": "CPF (11 dígitos) ou CNPJ (14 caracteres) sem formatação. A partir de jul/2026 o CNPJ pode ser alfanumérico: 12 caracteres (A-Z maiúsculo / 0-9) + 2 dígitos verificadores numéricos.",
-            "minLength": 11,
-            "maxLength": 14,
-            "pattern": "^[0-9]{11}$|^[A-Z0-9]{12}[0-9]{2}$",
+            "description": "CPF (11 dígitos) ou CNPJ (14 caracteres). Pontuação é ignorada. O CNPJ pode ser alfanumérico: 12 caracteres A-Z/0-9 + 2 dígitos verificadores numéricos, que são validados.",
             "example": "12345678901"
           },
           "documentIdentity": {
             "type": "string",
-            "description": "Documento de identidade (RG) - opcional, apenas para CPF",
+            "description": "RG do titular, de 6 a 15 caracteres. Opcional; usado só para CPF.",
             "minLength": 6,
             "maxLength": 15,
             "example": "MG12345678"
           },
           "districts": {
             "type": "array",
-            "description": "Lista de distritos onde as certidões devem ser emitidas. Obrigatório exceto quando creditAnalysisOnly é true. Máximo 2 distritos.",
-            "minItems": 1,
+            "description": "Comarcas onde as certidões serão emitidas (máximo 2). Obrigatório, exceto com `creditAnalysisOnly: true`. Valores válidos em `GET /diligences/districts`.",
             "maxItems": 2,
             "items": {
               "$ref": "#/components/schemas/StateDistrict"
@@ -752,17 +1112,17 @@
           },
           "creditAnalysis": {
             "type": "boolean",
-            "description": "Se deve incluir análise de crédito (Serasa) além das certidões. Adiciona 0,5 créditos ao custo. Só é realizada se o titular tiver 18+ anos.",
+            "description": "Inclui a Análise DiHub junto com as certidões (+0,5 crédito). Só é feita se o titular tiver 18 anos ou mais; caso contrário, não é cobrada.",
             "default": false
           },
           "creditAnalysisOnly": {
             "type": "boolean",
-            "description": "Se true, realiza apenas análise de crédito sem emitir certidões. Distritos não são obrigatórios. Titular deve ter 18+ anos.",
+            "description": "Faz só a Análise DiHub, sem certidões (1 crédito). Dispensa `districts`. Titular precisa ter 18 anos ou mais.",
             "default": false
           },
           "useOldModel": {
             "type": "boolean",
-            "description": "Se deve usar o modelo antigo de relatório de análise de crédito (true) ou o novo modelo de aluguel (false). Aplica-se apenas a requisições de análise de crédito. Modelos: antigo usa CREDIT_ANALYSIS_PF/PJ, novo usa CREDIT_ANALYSIS_PF_RENT/PJ_RENT",
+            "description": "`true` usa o modelo anterior do relatório da Análise DiHub; `false` usa o modelo atual. Só tem efeito com Análise DiHub.",
             "default": false
           }
         }
@@ -772,27 +1132,19 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Diligence ID"
+            "format": "uuid",
+            "description": "ID da diligência"
           },
           "subject": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "document": {
-                "type": "string",
-                "description": "Obfuscated document number"
-              }
-            }
+            "$ref": "#/components/schemas/Subject"
           },
           "state": {
             "type": "string",
-            "description": "State (UF) or combination e.g. MG/SP"
+            "description": "UF. Com duas UFs, vem `MG/SP`. Vazio na Análise DiHub isolada."
           },
           "comarca": {
             "type": "string",
-            "description": "District/court name"
+            "description": "Comarca. Com duas comarcas, vem `BELO_HORIZONTE/SAO_PAULO`. Vazio na Análise DiHub isolada."
           },
           "status": {
             "type": "object",
@@ -800,25 +1152,30 @@
               "label": {
                 "type": "string",
                 "enum": [
-                  "Concluída",
                   "Em andamento",
+                  "Concluída",
                   "Falha"
-                ]
+                ],
+                "description": "Status geral da diligência"
               },
               "finishedCertificates": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Certidões concluídas"
               },
               "totalCertificates": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Total de certidões da diligência"
               }
             }
           },
           "emissionDate": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Data de criação da diligência"
           },
           "haveAnalysisOfCredit": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "`true` se a diligência inclui Análise DiHub"
           }
         }
       },
@@ -827,63 +1184,42 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Diligence ID"
+            "format": "uuid",
+            "description": "ID da diligência"
           },
           "subject": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "document": {
-                "type": "string",
-                "description": "Obfuscated document number"
-              }
-            }
+            "$ref": "#/components/schemas/Subject"
           },
           "state": {
-            "type": "string"
+            "type": "string",
+            "description": "UF (ou `MG/SP` com duas UFs)"
           },
           "district": {
-            "type": "string"
+            "type": "string",
+            "description": "Comarca (ou `COMARCA_1/COMARCA_2`)"
           },
           "diligenceStatus": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "COMPLETED",
+              "FAILED"
+            ],
+            "description": "Status geral da diligência (valor bruto, em inglês)"
           },
           "certificates": {
             "type": "object",
+            "description": "Chave = nome do emissor; valor = certidões daquele emissor. A Análise DiHub aparece sob a chave `DiHub`.",
             "additionalProperties": {
               "type": "array",
               "items": {
-                "type": "object",
-                "properties": {
-                  "certificateName": {
-                    "type": "string"
-                  },
-                  "emissionResultStatus": {
-                    "type": "string",
-                    "enum": [
-                      "Em andamento",
-                      "Concluída",
-                      "Falha"
-                    ]
-                  },
-                  "certificateStatus": {
-                    "type": "string",
-                    "nullable": true,
-                    "enum": [
-                      "Pendência potencial",
-                      "Positiva",
-                      "Negativa"
-                    ],
-                    "description": "Status da certidão. Ausente enquanto a emissão não foi concluída."
-                  }
-                }
+                "$ref": "#/components/schemas/CertificateItem"
               }
             }
           },
           "requester": {
             "type": "object",
+            "description": "Usuário que criou a diligência",
             "properties": {
               "name": {
                 "type": "string"
@@ -901,14 +1237,14 @@
         "properties": {
           "state": {
             "type": "string",
-            "description": "Sigla do estado brasileiro (UF)",
+            "description": "UF, em maiúsculas. Liberadas hoje: BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP.",
             "minLength": 1,
             "maxLength": 100,
             "example": "MG"
           },
           "district": {
             "type": "string",
-            "description": "Nome do distrito (comarca) em maiúsculas com underscores",
+            "description": "Comarca, exatamente como retornada por `GET /diligences/districts` (maiúsculas, sem acento, `_` no lugar de espaço).",
             "minLength": 1,
             "maxLength": 100,
             "example": "BELO_HORIZONTE"
@@ -918,61 +1254,138 @@
       "ErrorResponse": {
         "type": "object",
         "properties": {
+          "statusCode": {
+            "type": "integer",
+            "description": "Mesmo código HTTP da resposta",
+            "example": 400
+          },
           "message": {
             "type": "string",
             "description": "Mensagem de erro",
-            "example": "Validation Error"
+            "example": "Not enough credits"
           },
-          "details": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              {
-                "type": "object"
-              }
-            ]
+          "data": {
+            "nullable": true,
+            "description": "Detalhe do erro, quando houver. Em erro de validação, é a lista de problemas (`code`, `path`, `message`)."
+          }
+        }
+      },
+      "Subject": {
+        "type": "object",
+        "description": "Titular da diligência",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome ou razão social"
+          },
+          "document": {
+            "type": "string",
+            "description": "Documento mascarado: CPF `123.***.***-01`, CNPJ `12.***.***/****-95`"
+          }
+        }
+      },
+      "CertificateItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID da certidão. Use em `GET /certificate/{id}/download-pdf`."
+          },
+          "certificateName": {
+            "type": "string",
+            "description": "Nome da certidão"
+          },
+          "emissionResultStatus": {
+            "type": "string",
+            "enum": [
+              "Em andamento",
+              "Em acompanhamento",
+              "Concluída",
+              "Potencialmente Positiva"
+            ],
+            "description": "Andamento da emissão. Falhas internas aparecem como `Em andamento` enquanto a DiHub tenta de novo."
+          },
+          "certificateStatus": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "Negativa",
+              "Positiva",
+              "Positiva com efeitos de negativa",
+              "Potencialmente Positiva"
+            ],
+            "description": "Resultado da certidão. `null` enquanto não há resultado."
+          }
+        }
+      },
+      "AuthErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Unauthorized"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid token"
           }
         }
       }
     },
     "responses": {
       "UnauthorizedError": {
-        "description": "Credenciais de autenticação ausentes ou inválidas",
+        "description": "Header `X-Api-Token` ausente, ou token inexistente, vencido ou desativado.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AuthErrorResponse"
+            },
+            "examples": {
+              "missing": {
+                "summary": "Header ausente",
+                "value": {
+                  "error": "Unauthorized",
+                  "message": "Missing or invalid api token"
+                }
+              },
+              "invalid": {
+                "summary": "Token inexistente, vencido ou desativado",
+                "value": {
+                  "error": "Unauthorized",
+                  "message": "Invalid token"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ForbiddenDiligence": {
+        "description": "A diligência é de outro usuário fora da sua organização.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
-              "message": "Unauthorized"
+              "statusCode": 403,
+              "message": "Diligence not found",
+              "data": null
             }
           }
         }
       },
       "InternalServerError": {
-        "description": "Erro interno do servidor",
+        "description": "Erro interno.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
-              "message": "Internal Server Error"
+              "statusCode": 500,
+              "message": "Internal Server Error",
+              "data": null
             }
           }
         }

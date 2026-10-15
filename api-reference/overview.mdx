@@ -1,6 +1,6 @@
 ---
-title: 'Visão Geral da API'
-description: 'Entenda o que você precisa e o detalhe da documentação dos endpoints'
+title: 'Visão geral da API'
+description: 'Ambientes, autenticação, formato das respostas e fluxo básico de integração'
 ---
 
 ## Ambientes
@@ -17,8 +17,10 @@ https://api.dihub.com.br
 https://homolog.api.dihubapp.com
 ```
 
+As rotas ficam direto na raiz do domínio, sem prefixo de versão (ex.: `https://api.dihub.com.br/diligences/emit`).
+
 <Warning>
-O ambiente de homologação precisa ser liberado pela equipe da DiHub. A habilitação desse acesso pelo próprio usuário ainda está em desenvolvimento.
+O acesso à homologação é liberado pela equipe da DiHub. Ainda não dá para habilitar pelo dashboard.
 </Warning>
 
 ## Autenticação
@@ -26,40 +28,76 @@ O ambiente de homologação precisa ser liberado pela equipe da DiHub. A habilit
 Todas as rotas exigem o header `X-Api-Token`.
 
 ```bash
-X-Api-Token: YOUR_API_TOKEN
+X-Api-Token: SEU_TOKEN
 ```
 
+Sem o header, ou com token inexistente, vencido ou desativado, a API responde `401`.
+
 <Card title="Como gerar seu token" icon="key" href="/introduction/authentication">
-  Veja como criar, copiar e revogar tokens no dashboard.
+  Como criar, copiar e desativar tokens no dashboard.
 </Card>
+
+## Formato das respostas
+
+As respostas JSON de sucesso vêm num envelope. O conteúdo do endpoint fica em `data`:
+
+```json
+{
+  "statusCode": 200,
+  "message": null,
+  "data": { "balance": 15.5 }
+}
+```
+
+Erros usam o mesmo formato, com `message` explicando o problema e `data` trazendo detalhes quando houver:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Not enough credits",
+  "data": { "requiredCredits": 2, "totalCreditsAmount": 1 }
+}
+```
+
+Exceções:
+
+- `401` de autenticação: `{ "error": "Unauthorized", "message": ... }`, com `Missing or invalid api token` (header ausente) ou `Invalid token` (token inexistente, vencido ou desativado).
+- `GET /diligences/{id}/download-pdf` e `GET /diligences/{id}/download-zip`: devolvem `{ "downloadUrl", "expiresAt" }` direto, sem envelope.
+- `GET /certificate/{id}/download-pdf`: devolve o arquivo PDF.
 
 ## Fluxo básico
 
 1. Gere seu token de API.
-2. Consulte `GET /credits/balance` para validar seu saldo.
-3. Envie `POST /diligences/emit` para iniciar a diligência.
-4. Acompanhe o processamento e baixe os arquivos quando estiverem prontos.
+2. Consulte `GET /credits/balance` para conferir o saldo.
+3. Consulte `GET /diligences/districts` para obter as comarcas válidas.
+4. Envie `POST /diligences/emit` para criar a diligência.
+5. Acompanhe com `GET /diligences/{id}/status` e `GET /diligences/{id}/certificates`.
+6. Baixe os arquivos com os endpoints de download.
 
 <Info>
-Use a página [Consumo de créditos](/reference/consumo-creditos) para validar a cobrança antes de integrar fluxos em lote.
+Cobrança por cenário: [Consumo de créditos](/reference/consumo-creditos).
 </Info>
 
 ## Atalhos
 
 <CardGroup cols={2}>
   <Card title="Saldo de créditos" icon="wallet" href="/api-reference/credits/balance">
-    Consulte o saldo atual da conta autenticada.
+    Consulte o saldo da conta autenticada.
   </Card>
 
   <Card title="Emitir diligência" icon="file-certificate" href="/api-reference/diligences/emit">
-    Inicie uma diligência com certidões, análise de crédito ou ambos.
+    Emita certidões, Análise DiHub ou os dois.
+  </Card>
+
+  <Card title="Estados e comarcas" icon="map" href="/api-reference/diligences/districts">
+    Valores aceitos em `state` e `district`.
   </Card>
 
   <Card title="Consumo de créditos" icon="calculator" href="/reference/consumo-creditos">
-    Veja a regra de cobrança por cenário.
+    Regra de cobrança por cenário.
   </Card>
 
-  <Card title="Todas as certidões" icon="list-check" href="/reference/todas-certidoes">
-    Consulte a lista consolidada de certidões emitidas pela plataforma.
+  <Card title="Certidões e emissores" icon="list-check" href="/reference/todas-certidoes">
+    UFs disponíveis, certidões e emissores.
   </Card>
 </CardGroup>

@@ -1,87 +1,66 @@
 # DiHub Documentation
 
-Documentação da API DiHub para emissão de diligências, certidões e análise de crédito.
+> API da DiHub para emissão de diligências: certidões federais, estaduais e municipais de CPF ou CNPJ por comarca, com Análise DiHub opcional. Autenticação pelo header `X-Api-Token`. Produção: https://api.dihub.com.br (sem prefixo de versão). Homologação: https://homolog.api.dihubapp.com (acesso liberado pela DiHub). Estados atendidos: BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP.
+
+Conteúdo completo de todas as páginas: https://docs.dihub.com.br/llms-full.txt
 
 ## Guia
 
-- [Início](/index.mdx) - Página inicial da documentação DiHub
-- [Autenticação](/introduction/authentication.mdx) - Como gerenciar e usar chaves de API (header X-Api-Token)
-- [Consumo de créditos](/reference/consumo-creditos.mdx) - Tabela de cobrança: certidões (1 crédito), análise DiHub (1 crédito), combinado (1,5 créditos), múltiplas comarcas em estados diferentes (+1 crédito)
-- [Todas as certidões](/reference/todas-certidoes.mdx) - Lista completa de certidões emitidas por órgão (TJMG, SEFAZ, Receita Federal, etc.)
-- [Webhooks](/webhooks/webhooks.mdx) - Documentação em desenvolvimento
+- [Comece por aqui](https://docs.dihub.com.br/index.md): o que a API faz, ambientes, estados atendidos e primeiros passos
+- [Autenticação](https://docs.dihub.com.br/introduction/authentication.md): criar e desativar token, header `X-Api-Token`, validade de 90 dias, respostas 401
+- [Consumo de créditos](https://docs.dihub.com.br/reference/consumo-creditos.md): 1 crédito por diligência (até 2 comarcas no mesmo estado); 2 com comarcas em estados diferentes; +0,5 com Análise DiHub; 1 só a Análise DiHub
+- [Certidões e emissores](https://docs.dihub.com.br/reference/todas-certidoes.md): UFs disponíveis, certidões e emissores
+- [Webhooks](https://docs.dihub.com.br/webhooks/webhooks.md): ainda não disponíveis; acompanhe pelo endpoint de status
 
-## API Reference
+## IA
 
-- [Visão Geral](/api-reference/overview.mdx) - Ambientes (produção: api.dihub.com.br, homologação: homolog.api.dihubapp.com), autenticação, fluxo básico
-- [Consultar Saldo](/api-reference/credits/balance.mdx) - GET /credits/balance - Retorna { balance: number }
-- [Emitir Diligência](/api-reference/diligences/emit.mdx) - POST /diligences/emit - Cria diligência com certidões e/ou análise de crédito. Body: document, documentIdentity?, districts[], creditAnalysis?, creditAnalysisOnly?
-- [Status da Diligência](/api-reference/diligences/status.mdx) - GET /diligences/:id/status - Acompanha processamento
-- [Listar Certidões](/api-reference/diligences/certificates.mdx) - GET /diligences/:id/certificates - Lista certidões da diligência
-- [Baixar PDF](/api-reference/diligences/download-pdf.mdx) - GET /diligences/:id/pdf - Download de certidão individual
-- [Baixar ZIP](/api-reference/diligences/download-zip.mdx) - GET /diligences/:id/zip - Download de todas as certidões
-- [Baixar PDF Certidão](/api-reference/certificates/download-pdf.mdx) - GET /certificates/:id/pdf - Download de certidão específica
--
-## API Specification
+- [Visão geral](https://docs.dihub.com.br/llms/overview.md): MCP e llms.txt
+- [MCP Server](https://docs.dihub.com.br/llms/mcp.md): https://docs.dihub.com.br/mcp, busca e leitura da documentação (não chama a API)
+- [llms.txt](https://docs.dihub.com.br/llms/llms-txt.md): índice e conteúdo completo em texto
 
-- OpenAPI: [openapi.json](/openapi.json)
+## Referência da API
 
-## Retrieval Guide
+- [Visão geral da API](https://docs.dihub.com.br/api-reference/overview.md): ambientes, autenticação, formato das respostas e fluxo básico
+- [Consultar saldo de créditos](https://docs.dihub.com.br/api-reference/credits/balance.md): `GET /credits/balance`
+- [Listar diligências](https://docs.dihub.com.br/api-reference/diligences/list.md): `GET /diligences`
+- [Estados e comarcas](https://docs.dihub.com.br/api-reference/diligences/districts.md): `GET /diligences/districts`
+- [Emitir diligência](https://docs.dihub.com.br/api-reference/diligences/emit.md): `POST /diligences/emit`. Body: `document` (CPF ou CNPJ), `documentIdentity?`, `districts[]` (máx. 2, `{state, district}`), `creditAnalysis?`, `creditAnalysisOnly?`
+- [Consultar status da diligência](https://docs.dihub.com.br/api-reference/diligences/status.md): `GET /diligences/{id}/status`
+- [Listar certidões da diligência](https://docs.dihub.com.br/api-reference/diligences/certificates.md): `GET /diligences/{id}/certificates`
+- [Gerar PDF da diligência](https://docs.dihub.com.br/api-reference/diligences/download-pdf.md): `GET /diligences/{id}/download-pdf`, devolve link temporário `{downloadUrl, expiresAt}` do relatório em PDF
+- [Gerar ZIP da diligência](https://docs.dihub.com.br/api-reference/diligences/download-zip.md): `GET /diligences/{id}/download-zip`, devolve link temporário `{downloadUrl, expiresAt}` do ZIP com relatório e certidões
+- [Baixar PDF de uma certidão](https://docs.dihub.com.br/api-reference/certificates/download-pdf.md): `GET /certificate/{id}/download-pdf`
+- [OpenAPI](https://docs.dihub.com.br/openapi.json): especificação completa
 
-Use this section to quickly find relevant documentation for common queries:
+## Endpoints
 
-| Query Type | Primary Document | Related Documents |
-|------------|------------------|-------------------|
-| Autenticação / Token | /introduction/authentication.mdx | /api-reference/overview.mdx |
-| Saldo de créditos | /api-reference/credits/balance.mdx | /reference/consumo-creditos.mdx |
-| Como emitir diligência | /api-reference/diligences/emit.mdx | /reference/consumo-creditos.mdx, /reference/todas-certidoes.mdx |
-| Lista de certidões disponíveis | /reference/todas-certidoes.mdx | - |
-| Status do processamento | /api-reference/diligences/status.mdx | - |
-| Download de arquivos | /api-reference/diligences/download-pdf.mdx, /api-reference/diligences/download-zip.mdx | /api-reference/diligences/status.mdx |
-| Preços / Custos | /reference/consumo-creditos.mdx | - |
-| Webhooks | /webhooks/webhooks.mdx | - |
+Todos exigem o header `X-Api-Token`.
 
-## Common Query Patterns
+Respostas JSON vêm em `{statusCode, message, data}`; exceções: 401 de autenticação (`{error, message}`), download-pdf/zip (`{downloadUrl, expiresAt}`) e `/certificate/{id}/download-pdf` (binário).
 
-### "Como iniciar uma diligência para CPF/CNPJ?"
-1. Consultar saldo: GET /credits/balance
-2. Emitir diligência: POST /diligences/emit com document, districts
-3. Ver docs: /api-reference/diligences/emit.mdx, /reference/consumo-creditos.mdx
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | /credits/balance | Saldo de créditos |
+| GET | /diligences | Lista as diligências do usuário |
+| GET | /diligences/districts | Comarcas por estado (pode incluir estados ainda não atendidos; ver lista acima) |
+| POST | /diligences/emit | Emite uma diligência (certidões e/ou Análise DiHub) |
+| GET | /diligences/{id}/status | Status do processamento |
+| GET | /diligences/{id}/certificates | Certidões da diligência |
+| GET | /diligences/{id}/download-pdf | Link temporário do relatório em PDF (`{downloadUrl, expiresAt}`) |
+| GET | /diligences/{id}/download-zip | Link temporário do ZIP com relatório e certidões (`{downloadUrl, expiresAt}`) |
+| GET | /certificate/{id}/download-pdf | PDF de uma certidão (rota no singular: `/certificate`) |
 
-### "Quais certidões estão disponíveis?"
-- Ver lista completa: /reference/todas-certidoes.mdx
+## Perguntas comuns
 
-### "Como baixar certidões após processamento?"
-1. Verificar status: GET /diligences/:id/status
-2. Baixar ZIP: GET /diligences/:id/zip (todas) ou GET /diligences/:id/pdf (individual)
-3. Ver docs: /api-reference/diligences/status.mdx, /api-reference/diligences/download-zip.mdx
+### Como emitir uma diligência?
+1. `GET /credits/balance` para conferir o saldo
+2. `GET /diligences/districts` para escolher as comarcas
+3. `POST /diligences/emit` com `document` e `districts`
+4. `GET /diligences/{id}/status` até concluir
+5. `GET /diligences/{id}/download-zip` ou `GET /diligences/{id}/download-pdf`
 
-### "Quanto custa uma diligência?"
-- Uma comarca: 1 crédito
-- Múltiplas comarcas mesmo estado: 1 crédito
-- Múltiplas comarcas estados diferentes: 2 créditos
-- + Análise DiHub: +0,5 crédito
-- Ver docs: /reference/consumo-creditos.mdx
+### Quais certidões são emitidas?
+Ver https://docs.dihub.com.br/reference/todas-certidoes.md
 
-## API Endpoints Summary
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /credits/balance | Consulta saldo de créditos |
-| POST | /diligences/emit | Cria diligência (certidões e/ou análise) |
-| GET | /diligences/:id/status | Status do processamento |
-| GET | /diligences/:id/certificates | Lista certidões da diligência |
-| GET | /diligences/:id/pdf | Download PDF individual |
-| GET | /diligences/:id/zip | Download ZIP com todas |
-| GET | /certificates/:id/pdf | Download certidão específica |
-
-## Authentication
-
-All API requests require the `X-Api-Token` header:
-
-```
-X-Api-Token: YOUR_API_TOKEN
-```
-
-Base URLs:
-- Production: https://api.dihub.com.br
-- Homologation: https://homolog.api.dihubapp.com
+### Quanto custa?
+Ver https://docs.dihub.com.br/reference/consumo-creditos.md

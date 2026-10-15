@@ -1,5 +1,13 @@
 ---
-title: 'Baixar PDF de uma Certidão'
-description: 'Baixa o PDF de uma certidão específica gerada pela diligência'
+title: 'Baixar PDF de uma certidão'
+description: 'Baixa o PDF de uma certidão específica da diligência'
 openapi: 'GET /certificate/{id}/download-pdf'
 ---
+
+## Como funciona
+
+Retorna o arquivo PDF direto (`Content-Type: application/pdf`, `Content-Disposition: attachment`).
+
+O `id` é o da **certidão**, não o da diligência: pegue em [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates). O caminho usa `/certificate`, no singular.
+
+Certidão sem arquivo ainda (emissão em andamento) retorna `404`.

@@ -1,66 +1,37 @@
 ---
 title: 'Autenticação'
-description: 'Como enviar requisições para a nossa API'
+description: 'Como criar um token de API e enviá-lo nas requisições'
 icon: 'lock'
 ---
 
-<Tip>
-  **Chave de API**: Sua credencial de acesso à API da DiHub. Esta chave identifica sua conta e autoriza suas requisições. **IMPORTANTE**: Sem a chave de API, as requisições serão recusadas.
-</Tip> 
+Toda requisição à API da DiHub precisa de um token de API no header `X-Api-Token`. O token identifica o seu usuário: a emissão consome os créditos dele e da organização dele. Sem token válido, a API recusa a requisição com `401`.
 
-## <Icon icon="lock" type="solid"/>  Gerenciando chaves de API
-
-Gerencie suas chaves de API diretamente em nossa plataforma. Você pode:
-- Listar todas as chaves ativas
-- Criar novas chaves
-- Revogar chaves existentes
-
-<Card title="Erro de Autenticação" icon="warning" horizontal>
-  A API retornará o código HTTP `401` quando:
-  - A chave de API não for fornecida no header
-  - A chave for inválida
-  - A chave tiver sido revogada
-</Card>
-
-Quando o token é inválido ou não está presente, a API retorna a seguinte resposta:
-
-```json
-{
-  "error": "Unauthorized",
-  "message": "Missing or invalid api token"
-}
+```bash
+curl 'https://api.dihub.com.br/credits/balance' \
+  --header 'X-Api-Token: SEU_TOKEN'
 ```
 
-## <Icon icon="key" type="solid"/>  Criando chaves de API
+## Como criar um token
 
-<Card title="Boas Práticas de Segurança" icon="light-emergency-on" horizontal>
-  * Armazene suas chaves em variáveis de ambiente ou gerenciadores de segredos
-  * Nunca compartilhe suas chaves de API
-  * A DiHub nunca solicitará suas chaves
-  * Revogue imediatamente qualquer chave comprometida
-</Card>
-
-## Como criar sua chave de API pela plataforma
-
-Siga estes passos no [Dashboard DiHub](https://app.dihub.com.br) para criar sua chave de API:
+No [Dashboard DiHub](https://app.dihub.com.br):
 
 <Steps>
-  <Step title="Acesse o painel de API">
-    No menu da sua conta (canto superior direito), clique em **API** para acessar a página de Chaves de API.
+  <Step title="Acesse a página de API">
+    No menu da sua conta (canto superior direito), clique em **API** para abrir a página **Chaves de API**.
 
     <Frame>
       <img src="/images/entrar-no-painel-de-api.png" alt="Menu Minha conta com opção API" />
     </Frame>
   </Step>
   <Step title="Crie um novo token">
-    Na página **Chaves de API**, clique no botão **+ Criar Novo Token** no canto superior direito.
+    Clique em **+ Criar Novo Token**, no canto superior direito.
 
     <Frame>
       <img src="/images/criar-novo-token.png" alt="Botão Criar Novo Token na página de Chaves de API" />
     </Frame>
   </Step>
-  <Step title="Copie e salve seu token">
-    Após a criação, o token será exibido na tabela. Use o ícone de copiar ao lado do token para copiá-lo e armazene-o em um local seguro — você pode copia-lo sempre que necessário.
+  <Step title="Copie o token">
+    O token aparece na tabela. Use o ícone de copiar ao lado dele. Você pode copiá-lo de novo sempre que precisar.
 
     <Frame>
       <img src="/images/copiar-e-salvar-o-token.png" alt="Tabela de tokens com ícone para copiar" />
@@ -68,24 +39,36 @@ Siga estes passos no [Dashboard DiHub](https://app.dihub.com.br) para criar sua 
   </Step>
 </Steps>
 
-<Card title="Desativando um token" icon="trash" horizontal>
-  Para desativar um token que não precisa mais ser usado, clique no ícone de lixeira na coluna **Ações** da tabela de Chaves de API. Tokens desativados não podem ser reativados.
+Na mesma página você vê os tokens ativos e desativa os que não usa mais.
 
-  <Frame>
-    <img src="/images/desativar-o-token.png" alt="Ações para desativar token" />
-  </Frame>
-</Card>
+<Note>
+  O token vale por **90 dias** a partir da criação. Depois disso, crie um novo.
+</Note>
 
-Após criar sua chave, inclua-a em todas as requisições no header `X-Api-Token`:
+## Como desativar um token
 
-```bash
-curl 'https://api.dihub.com.br/credits/balance' \
-  --header 'X-Api-Token: YOUR_API_TOKEN'
-```
+Clique no ícone de lixeira na coluna **Ações** da tabela de Chaves de API. A desativação é imediata e não tem volta: um token desativado não pode ser reativado.
+
+<Frame>
+  <img src="/images/desativar-o-token.png" alt="Ações para desativar token" />
+</Frame>
+
+## Erros de autenticação
+
+A API retorna `401` nestes casos:
+
+| Situação | Resposta |
+|----------|----------|
+| Header `X-Api-Token` ausente | `{"error": "Unauthorized", "message": "Missing or invalid api token"}` |
+| Token inexistente, vencido ou desativado | `{"error": "Unauthorized", "message": "Invalid token"}` |
+
+## Boas práticas
+
+- Guarde o token em variável de ambiente ou gerenciador de segredos, nunca no código.
+- Não compartilhe o token. A DiHub nunca pede o seu token.
+- Desative na hora qualquer token que possa ter vazado.
 
 ## Ambientes
-
-Use uma das URLs abaixo conforme o ambiente liberado para a sua conta:
 
 **Produção**
 
@@ -100,7 +83,5 @@ https://homolog.api.dihubapp.com
 ```
 
 <Warning>
-O ambiente de homologação depende de liberação pela equipe de desenvolvimento da DiHub. A ativação feita diretamente pelo próprio usuário ainda está em desenvolvimento.
+  O acesso à homologação é liberado pela equipe da DiHub. Peça pelo e-mail claudiolima@dihub.com.br.
 </Warning>
-
-A validação padrão do token é de 90 dias.

@@ -1,5 +1,17 @@
 ---
-title: 'Listar Certidões da Diligência'
-description: 'Retorna a lista de certidões associadas à diligência e o status individual de cada item'
+title: 'Listar certidões da diligência'
+description: 'Retorna as certidões da diligência agrupadas por emissor, com status e resultado de cada uma'
 openapi: 'GET /diligences/{id}/certificates'
 ---
+
+## Como ler a resposta
+
+`certificates` é um objeto cuja chave é o nome do emissor. A Análise DiHub aparece sob a chave `DiHub`.
+
+Cada certidão traz:
+
+- `id`: use em [`GET /certificate/{id}/download-pdf`](/api-reference/certificates/download-pdf).
+- `emissionResultStatus`: `Em andamento`, `Em acompanhamento`, `Concluída` ou `Potencialmente Positiva`. Falhas de emissão aparecem como `Em andamento` enquanto a DiHub tenta de novo.
+- `certificateStatus`: `Negativa`, `Positiva`, `Positiva com efeitos de negativa`, `Potencialmente Positiva`, ou `null` enquanto não há resultado.
+
+`diligenceStatus` vem com o valor bruto: `IN_PROGRESS`, `COMPLETED` ou `FAILED`.

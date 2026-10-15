@@ -1,17 +1,17 @@
 ---
 title: 'Webhooks'
-description: 'Configure e receba notificações sobre atualizações'
+description: 'Notificações de eventos ainda não estão disponíveis'
 icon: 'webhook'
 ---
 
 <Warning>
-  **📝 Documentação em Progresso**
-  
-  O webhook ainda está em desenvolvimento, e esta documentação também está sendo preparada.
-  
-  Em breve você encontrará aqui informações sobre como configurar, gerenciar e utilizar webhooks para receber notificações em tempo real dos eventos da DiHub, assim que o recurso estiver disponível.
-  
-  Enquanto isso, se você tiver dúvidas ou precisar de ajuda com webhooks, não hesite em entrar em contato com nossa equipe de suporte. Estamos aqui para ajudar! 🚀
+  A API da DiHub ainda não envia webhooks. Não há cadastro de URL nem notificação de eventos.
 </Warning>
 
-Para consultar os endpoints disponíveis da API, acesse a [Referência da API](/api-reference/overview).
+Para saber quando uma diligência terminou, consulte o status periodicamente:
+
+1. Emita a diligência com [`POST /diligences/emit`](/api-reference/diligences/emit) e guarde o `diligenceId` retornado.
+2. Consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) em intervalos até o processamento terminar.
+3. Baixe os arquivos com [`GET /diligences/{id}/download-zip`](/api-reference/diligences/download-zip) ou [`GET /diligences/{id}/download-pdf`](/api-reference/diligences/download-pdf).
+
+Dúvidas: claudiolima@dihub.com.br.

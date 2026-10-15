@@ -1,10 +1,10 @@
 ---
 title: 'MCP Server'
-description: 'Conecte assistentes de IA à documentação DiHub via Model Context Protocol.'
+description: 'Conecte assistentes de IA à documentação da DiHub via Model Context Protocol.'
 icon: 'plug'
 ---
 
-O **Model Context Protocol (MCP)** permite que assistentes de IA consultem a documentação da DiHub em tempo real. Ao invés de copiar trechos manualmente, o assistente busca endpoints, parâmetros e exemplos sob demanda.
+O servidor MCP da documentação deixa o assistente de IA buscar e ler as páginas desta documentação durante a conversa, em vez de você copiar trechos manualmente.
 
 ## Endpoint
 
@@ -12,11 +12,23 @@ O **Model Context Protocol (MCP)** permite que assistentes de IA consultem a doc
 https://docs.dihub.com.br/mcp
 ```
 
+Transporte HTTP, sem autenticação.
+
 ## Configuração
 
-### Claude Desktop
+### Claude (web e desktop)
 
-Adicione ao `claude_desktop_config.json`:
+Em **Configurações → Conectores → Adicionar conector personalizado**, informe a URL do endpoint.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http dihub https://docs.dihub.com.br/mcp
+```
+
+### Cursor
+
+Adicione ao `.cursor/mcp.json` do projeto (ou ao `~/.cursor/mcp.json`):
 
 ```json
 {
@@ -28,20 +40,18 @@ Adicione ao `claude_desktop_config.json`:
 }
 ```
 
-### Cursor
-
-Em **Settings → MCP → Add new MCP server**, informe a URL acima.
-
 ### Outros clientes
 
-Qualquer cliente compatível com MCP aceita a URL do endpoint diretamente.
+Qualquer cliente compatível com MCP via HTTP aceita a URL do endpoint.
 
-## O que o assistente passa a fazer
+## Ferramentas expostas
 
-- Consultar a referência completa da API DiHub durante a conversa.
-- Sugerir chamadas com parâmetros corretos e payloads válidos.
-- Explicar comportamento de endpoints sem precisar abrir a documentação.
+| Ferramenta | O que faz |
+|------------|-----------|
+| `search_di_hub_documentation` | Busca nas páginas da documentação |
+| `query_docs_filesystem_di_hub_documentation` | Lê o conteúdo das páginas |
+| `submit_feedback` | Envia ao time da DiHub um aviso sobre página errada ou incompleta |
 
 <Note>
-  O MCP serve a documentação — ele não executa chamadas reais à API. Para isso, use sua API key normalmente nos exemplos gerados pelo assistente.
+  O MCP dá acesso só à documentação. Ele não chama a API da DiHub, não emite diligências e não consome créditos. Para chamar a API, use o seu token normalmente.
 </Note>

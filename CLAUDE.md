@@ -25,7 +25,7 @@ The OpenAPI spec at `openapi.json` (root) drives the API Reference tab automatic
 - Language: **Portuguese (pt-BR)**
 - Primary color: `#6d27d9` (purple)
 - API auth header: `X-Api-Token`
-- API base URL: `https://api.dihub.com.br/v1`
+- API base URL: `https://api.dihub.com.br` (sem prefixo de versão)
 
 ---
 
