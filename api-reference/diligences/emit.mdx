@@ -1,94 +1,85 @@
 ---
-title: 'Emitir Diligência'
-description: 'Cria uma nova diligência para emissão de certidões e/ou Análise DiHub'
+title: 'Emitir diligência'
+description: 'Cria uma diligência para emissão de certidões e/ou Análise DiHub'
 openapi: 'POST /diligences/emit'
 ---
-## Regras importantes
 
-- Consulte `GET /credits/balance` antes de iniciar fluxos em lote.
-- Use no máximo 2 comarcas por requisição.
-- A Análise DiHub só é executada para titulares com 18 anos ou mais.
-- Para detalhes de cobrança, veja [Consumo de créditos](/reference/consumo-creditos).
+## Regras
 
-## Cenários suportados
+- Os créditos são debitados na criação. A emissão das certidões é assíncrona: acompanhe com `GET /diligences/{id}/status`.
+- Máximo de 2 comarcas por requisição.
+- UFs liberadas na API: **BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP**. Pegue os valores de `state` e `district` em [`GET /diligences/districts`](/api-reference/diligences/districts).
+- As certidões emitidas em cada UF estão em [Certidões e emissores](/reference/todas-certidoes).
+- `document` aceita CPF ou CNPJ, com ou sem pontuação. O CNPJ pode ser alfanumérico; os dígitos verificadores do CNPJ são validados.
+- Para CPF, a Análise DiHub só é feita se o titular tiver 18 anos ou mais.
+- Cobrança por cenário: [Consumo de créditos](/reference/consumo-creditos).
 
-O endpoint suporta três cenários principais:
+## Cenários
 
 <AccordionGroup>
-  <Accordion title="Diligência completa com certidões">
+  <Accordion title="Certidões">
     ```json
     {
       "document": "12345678901",
       "documentIdentity": "MG12345678",
       "districts": [
-        {
-          "state": "MG",
-          "district": "BELO_HORIZONTE"
-        },
-        {
-          "state": "SP",
-          "district": "SAO_PAULO"
-        }
+        { "state": "MG", "district": "BELO_HORIZONTE" },
+        { "state": "SP", "district": "SAO_PAULO" }
       ]
     }
     ```
-    - `documentIdentity` é opcional e usado apenas para CPF quando a certidão exigir.
-
-    - `districts` é obrigatório e deve conter pelo menos uma comarca.
-
-    - `districts` pode conter até 2 comarcas.
+    - `districts` é obrigatório, com 1 ou 2 comarcas.
+    - `documentIdentity` (RG) é opcional e só vale para CPF.
   </Accordion>
-    <Accordion title="Diligência completa com certidões e Análise DiHub">
+  <Accordion title="Certidões + Análise DiHub">
     ```json
     {
       "document": "12345678901",
-      "documentIdentity": "MG12345678",
       "districts": [
-        {
-          "state": "MG",
-          "district": "BELO_HORIZONTE"
-        }
+        { "state": "MG", "district": "BELO_HORIZONTE" }
       ],
       "creditAnalysis": true
     }
     ```
-    - `documentIdentity` é opcional e usado apenas para CPF quando a certidão exigir.
+    - Titular menor de 18 anos: as certidões são emitidas, a análise não é feita e não é cobrada.
   </Accordion>
-  <Accordion title="Apenas Análise DiHub">
+  <Accordion title="Só Análise DiHub">
     ```json
     {
       "document": "12345678901",
       "creditAnalysisOnly": true
     }
     ```
-    - Não é necessário informar `districts`.
-
-    - O titular deve ter ser maior de 18 anos.
-
-    - Quando sozinha, a Análise DiHub consome 1 crédito.
+    - Dispensa `districts`.
+    - Titular precisa ter 18 anos ou mais.
+    - Custa 1 crédito.
   </Accordion>
 </AccordionGroup>
 
-## Erros comuns e como tratar
+## Erros
+
+Todos os erros abaixo acontecem antes do débito: nenhum crédito é consumido.
 
 <AccordionGroup>
-  <Accordion title="400 - Dados de entrada inválidos">
-    O `details` traz `path` e `message` indicando o campo incorreto. Verifique o formato do CPF (11 dígitos) ou CNPJ (14 caracteres — pode ser alfanumérico a partir de jul/2026) e se `districts` está preenchido quando necessário.
+  <Accordion title="400 - Corpo inválido">
+    `message` traz o primeiro problema encontrado e `data` traz a lista completa, com `path` indicando o campo. Exemplos: `O documento deve ter 11 ou 14 caracteres (CPF ou CNPJ)`, `CNPJ inválido: dígito verificador não confere`, `Máximo de 2 distritos`, `Distritos são obrigatórios quando não é apenas Análise DiHub`.
   </Accordion>
-  <Accordion title="400 - Distritos obrigatórios">
-    Enviado quando `creditAnalysisOnly` é `false` e `districts` está ausente ou vazio. Informe pelo menos uma comarca.
+  <Accordion title="400 - Comarca inválida">
+    `Invalid district <COMARCA> in state <UF>`: a comarca não existe na UF informada. Use os valores de [`GET /diligences/districts`](/api-reference/diligences/districts).
   </Accordion>
   <Accordion title="400 - Créditos insuficientes">
-    O `details` inclui `requiredCredits` e `totalCreditsAmount`. Consulte `GET /credits/balance` e solicite créditos no [painel financeiro](https://app.dihub.com.br/perfil/financeiro).
+    `Not enough credits`. `data` traz `requiredCredits` e `totalCreditsAmount`. Solicite créditos no [painel financeiro](https://app.dihub.com.br/perfil/financeiro).
   </Accordion>
-  <Accordion title="400 - Distrito inválido">
-    A comarca informada não existe para o estado. Verifique a lista em [Todas as certidões](/reference/todas-certidoes).
+  <Accordion title="400 - Titular menor de idade">
+    `Análise não realizada: usuário menor de idade.` Só ocorre com `creditAnalysisOnly: true`.
   </Accordion>
-  <Accordion title="400 - Análise não permitida para menores">
-    O titular tem menos de 18 anos. A Análise DiHub não será executada; o crédito não é cobrado.
+  <Accordion title="404 - Documento não encontrado">
+    `Subject Document Not Found`: o CPF ou CNPJ não foi encontrado nas bases cadastrais. Confira o documento.
   </Accordion>
-  <Accordion title="404 - Documento do titular não encontrado">
-    O CPF ou CNPJ informado não foi encontrado na base. Verifique o documento e tente novamente.
+  <Accordion title="422 - CPF sem data de nascimento">
+    `Data de nascimento não disponível para o CPF informado.`
+  </Accordion>
+  <Accordion title="500 - UF não liberada">
+    Pedir emissão em UF fora da lista liberada, mas com comarca cadastrada, retorna `500`. Use só as UFs listadas em [Regras](#regras).
   </Accordion>
 </AccordionGroup>
-

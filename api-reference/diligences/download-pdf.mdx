@@ -1,5 +1,16 @@
 ---
-title: 'Baixar PDF Consolidado da Diligência'
-description: 'Baixa o PDF consolidado da diligência quando o processamento estiver concluído'
+title: 'Gerar PDF da diligência'
+description: 'Gera o relatório da diligência em PDF e devolve um link temporário para download'
 openapi: 'GET /diligences/{id}/download-pdf'
 ---
+
+## Como funciona
+
+A resposta não é o arquivo: é um JSON com `downloadUrl` (link pré-assinado) e `expiresAt`. Baixe o arquivo antes de `expiresAt`; depois disso, chame o endpoint de novo.
+
+- `mergeCertificates=0` (padrão): gera só o relatório.
+- `mergeCertificates=1`: gera um PDF único com o relatório e as certidões concluídas.
+
+Exige ao menos uma certidão concluída; sem isso, retorna `404` com `No completed certificates available for download`.
+
+Para baixar uma certidão isolada, use [`GET /certificate/{id}/download-pdf`](/api-reference/certificates/download-pdf).

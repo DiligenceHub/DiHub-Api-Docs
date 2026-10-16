@@ -1,5 +1,15 @@
 ---
-title: 'Consultar Status da Diligência'
-description: 'Retorna o estado atual do processamento de uma diligência'
+title: 'Consultar status da diligência'
+description: 'Retorna o status geral e o progresso de uma diligência'
 openapi: 'GET /diligences/{id}/status'
 ---
+
+## Como ler a resposta
+
+- `status.label`: `Em andamento`, `Concluída` ou `Falha`.
+- `status.finishedCertificates` / `status.totalCertificates`: progresso da emissão.
+- `subject.document` vem mascarado.
+
+Você pode consultar diligências criadas por você ou por outro usuário da mesma organização. Diligência de fora da organização retorna `403`.
+
+Para o resultado de cada certidão, use [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates).

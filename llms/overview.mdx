@@ -1,6 +1,6 @@
 ---
-title: 'Visão Geral'
-description: 'Ferramentas e contexto para integrar a API DiHub com IA.'
+title: 'Visão geral'
+description: 'Como dar a documentação da DiHub como contexto para assistentes de IA.'
 ---
 
 <div
@@ -22,7 +22,7 @@ description: 'Ferramentas e contexto para integrar a API DiHub com IA.'
   </div>
 
   <p style={{ maxWidth: "640px", margin: "0 auto", opacity: 0.7, fontSize: "17px", fontWeight: "300" }}>
-    Use a API DiHub diretamente em agentes de IA, editores assistidos e ferramentas de automação — sem fricção.
+    Dê ao seu assistente de IA acesso à documentação da API DiHub: endpoints, parâmetros e regras de crédito.
   </p>
 </div>
 
@@ -30,11 +30,11 @@ description: 'Ferramentas e contexto para integrar a API DiHub com IA.'
 
 <CardGroup cols={2}>
   <Card title="MCP Server" icon="plug" href="/llms/mcp">
-    Conecte Claude Desktop, Cursor e qualquer cliente MCP à documentação da DiHub. O assistente consulta endpoints, parâmetros e exemplos em tempo real durante a conversa.
+    Conecte Claude, Cursor ou outro cliente MCP. O assistente busca e lê as páginas da documentação durante a conversa.
   </Card>
 
   <Card title="llms.txt" icon="file-lines" href="/llms/llms-txt">
-    Arquivo único com toda a documentação em formato otimizado para LLMs. Cole no contexto do modelo ou aponte ferramentas compatíveis com o padrão.
+    A documentação em texto: índice em `llms.txt` e conteúdo completo em `llms-full.txt`. Cole no contexto do modelo.
   </Card>
 </CardGroup>
 
@@ -44,21 +44,21 @@ description: 'Ferramentas e contexto para integrar a API DiHub com IA.'
 
 |                    | MCP Server                                  | llms.txt                                       |
 | ------------------ | ------------------------------------------- | ---------------------------------------------- |
-| **Objetivo**       | Consulta dinâmica da documentação via IA    | Fornecer toda a documentação como contexto     |
-| **Ideal para**     | Assistentes contínuos (Claude, Cursor)      | Prompts pontuais ou ferramentas sem MCP        |
-| **Formato**        | Servidor MCP consultado em runtime          | Arquivo de texto consumido pelo modelo         |
+| **Objetivo**       | O assistente busca o que precisa            | Toda a documentação como contexto              |
+| **Ideal para**     | Uso contínuo (Claude, Cursor)               | Prompt pontual ou ferramenta sem MCP           |
+| **Formato**        | Servidor MCP via HTTP                       | Arquivo de texto                               |
 | **Configuração**   | URL do endpoint no cliente MCP              | Cole o conteúdo ou aponte a URL                |
 
 ---
 
-## Ecossistema
+## Veja também
 
 <CardGroup cols={2}>
   <Card title="Referência da API" icon="book" href="/api-reference/overview">
-    Documentação completa dos endpoints da API DiHub.
+    Todos os endpoints da API DiHub.
   </Card>
 
   <Card title="Dashboard" icon="gauge" href="https://app.dihub.com.br">
-    Gere sua API key e gerencie sua conta.
+    Crie seu token de API e gerencie sua conta.
   </Card>
 </CardGroup>

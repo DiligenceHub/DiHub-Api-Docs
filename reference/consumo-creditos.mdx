@@ -1,34 +1,58 @@
 ---
 title: 'Consumo de créditos'
-description: 'Como funciona a cobrança de créditos na DiHub'
+description: 'Quantos créditos cada diligência consome'
 icon: 'calculator'
 ---
 
 <Info>
-  Se você estiver sem créditos, acesse o [painel financeiro no dashboard](https://app.dihub.com.br/perfil/financeiro) e solicite a quantidade desejada.
+  Sem créditos? Acesse o [painel financeiro no dashboard](https://app.dihub.com.br/perfil/financeiro) e solicite a quantidade desejada.
 </Info>
 
-A DiHub utiliza um sistema de créditos para cobrar pelo uso da plataforma. Cada diligência emitida consome créditos conforme as regras abaixo.
+Cada diligência emitida pela API consome créditos conforme as regras abaixo. A cobrança acontece no momento da emissão, uma única vez por diligência.
 
 ## Tabela de consumo
 
+Uma diligência aceita no máximo **2 comarcas**.
+
 | Cenário | Créditos |
 |---------|----------|
-| Todas as certidões oficiais | 1 crédito |
-| Análise de DiHub | 1 crédito |
-| Todas as certidões oficiais + Análise de DiHub | 1,5 crédito |
-| Todas as certidões oficiais com múltiplas comarcas no <ins>mesmo estado</ins> | 1 crédito |
-| Todas as certidões oficiais com múltiplas comarcas em <ins>estados diferentes</ins> | 2 créditos |
-| Todas as certidões oficiais com múltiplas comarcas em <ins>estados diferentes</ins> + Análise de DiHub | 2,5 créditos |
+| Certidões de 1 comarca | 1 |
+| Certidões de 2 comarcas no <ins>mesmo estado</ins> | 1 |
+| Certidões de 2 comarcas em <ins>estados diferentes</ins> | 2 |
+| Somente Análise DiHub | 1 |
+| Certidões + Análise DiHub | +0,5 sobre o valor das certidões |
 
-## Resumo
+Exemplos:
 
-- **Uma comarca ou múltiplas no mesmo estado**: 1 crédito
-- **Múltiplas comarcas em estados diferentes**: +1 crédito adicional
-- **Análise DiHub adicional**: +0,5 crédito quando combinada com certidões oficiais
+- 1 comarca + Análise DiHub = **1,5 crédito**
+- 2 comarcas no mesmo estado + Análise DiHub = **1,5 crédito**
+- 2 comarcas em estados diferentes, sem Análise DiHub = **2 créditos**
+- 2 comarcas em estados diferentes + Análise DiHub = **2,5 créditos**
 
-## Observações
+## Regras
 
-- A análise de DiHub só é realizada para titulares com 18 anos ou mais caso seja solicitada para um menor de idade o seu crédito não será cobrado.
-- O saldo é verificado antes da emissão; em caso de créditos insuficientes, a API retorna erro com o saldo disponível.
+- **Saldo usado:** entram na conta os créditos válidos do usuário dono do token e da organização dele. Créditos vencidos não contam.
+- **Ordem de consumo:** os créditos com vencimento mais próximo são consumidos primeiro.
+- **Saldo insuficiente:** a emissão é recusada com HTTP `400` e nenhum crédito é consumido. A resposta informa os créditos necessários e o saldo disponível:
 
+```json
+{
+  "statusCode": 400,
+  "message": "Not enough credits",
+  "data": {
+    "requiredCredits": 1.5,
+    "totalCreditsAmount": 1
+  }
+}
+```
+
+## Análise DiHub para menor de idade
+
+Para CPF, a Análise DiHub só é feita se o titular tiver 18 anos ou mais.
+
+- **Certidões + Análise DiHub:** as certidões são emitidas e o 0,5 crédito da análise não é cobrado.
+- **Somente Análise DiHub:** a API retorna HTTP `400` (`Análise não realizada: usuário menor de idade.`) e nenhum crédito é consumido.
+
+<Note>
+  A consulta de saldo (`GET /credits/balance`) não consome créditos.
+</Note>

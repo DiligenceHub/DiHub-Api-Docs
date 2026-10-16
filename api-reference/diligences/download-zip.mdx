@@ -1,5 +1,11 @@
 ---
-title: 'Baixar ZIP da Diligência'
-description: 'Baixa um arquivo ZIP com os documentos disponíveis para a diligência'
+title: 'Gerar ZIP da diligência'
+description: 'Gera um ZIP com o relatório e as certidões disponíveis e devolve um link temporário para download'
 openapi: 'GET /diligences/{id}/download-zip'
 ---
+
+## Como funciona
+
+A resposta não é o arquivo: é um JSON com `downloadUrl` (link pré-assinado) e `expiresAt`. Baixe o arquivo antes de `expiresAt`. Cada chamada gera um ZIP novo.
+
+Diferente dos outros endpoints de diligência, este retorna `403` também quando o ID não existe.
