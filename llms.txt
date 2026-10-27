@@ -1,6 +1,6 @@
 # DiHub Documentation
 
-> API da DiHub para emissão de diligências: certidões federais, estaduais e municipais de CPF ou CNPJ por comarca, com Análise DiHub opcional. Autenticação pelo header `X-Api-Token`. Produção: https://api.dihub.com.br (sem prefixo de versão). Homologação: https://homolog.api.dihubapp.com (acesso liberado pela DiHub). Estados atendidos: BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP.
+> API da DiHub para emissão de diligências: certidões federais, estaduais e municipais de CPF ou CNPJ por comarca, com Análise DiHub opcional. Autenticação pelo header `X-Api-Token`. Produção: https://api.dihub.com.br (sem prefixo de versão). Homologação: https://homolog.api.dihubapp.com (acesso liberado pela DiHub). Estados atendidos: AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP.
 
 Conteúdo completo de todas as páginas: https://docs.dihub.com.br/llms-full.txt
 
@@ -42,7 +42,7 @@ Respostas JSON vêm em `{statusCode, message, data}`; exceções: 401 de autenti
 |--------|----------|-----------|
 | GET | /credits/balance | Saldo de créditos |
 | GET | /diligences | Lista as diligências do usuário |
-| GET | /diligences/districts | Comarcas por estado (pode incluir estados ainda não atendidos; ver lista acima) |
+| GET | /diligences/districts | Comarcas por estado |
 | POST | /diligences/emit | Emite uma diligência (certidões e/ou Análise DiHub) |
 | GET | /diligences/{id}/status | Status do processamento |
 | GET | /diligences/{id}/certificates | Certidões da diligência |

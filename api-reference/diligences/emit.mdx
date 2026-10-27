@@ -8,7 +8,7 @@ openapi: 'POST /diligences/emit'
 
 - Os créditos são debitados na criação. A emissão das certidões é assíncrona: acompanhe com `GET /diligences/{id}/status`.
 - Máximo de 2 comarcas por requisição.
-- UFs liberadas na API: **BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP**. Pegue os valores de `state` e `district` em [`GET /diligences/districts`](/api-reference/diligences/districts).
+- UFs liberadas na API: **AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP**. Pegue os valores de `state` e `district` em [`GET /diligences/districts`](/api-reference/diligences/districts).
 - As certidões emitidas em cada UF estão em [Certidões e emissores](/reference/todas-certidoes).
 - `document` aceita CPF ou CNPJ, com ou sem pontuação. O CNPJ pode ser alfanumérico; os dígitos verificadores do CNPJ são validados.
 - Para CPF, a Análise DiHub só é feita se o titular tiver 18 anos ou mais.
@@ -78,8 +78,5 @@ Todos os erros abaixo acontecem antes do débito: nenhum crédito é consumido.
   </Accordion>
   <Accordion title="422 - CPF sem data de nascimento">
     `Data de nascimento não disponível para o CPF informado.`
-  </Accordion>
-  <Accordion title="500 - UF não liberada">
-    Pedir emissão em UF fora da lista liberada, mas com comarca cadastrada, retorna `500`. Use só as UFs listadas em [Regras](#regras).
   </Accordion>
 </AccordionGroup>
