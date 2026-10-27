@@ -4,10 +4,6 @@ description: 'Lista as comarcas cadastradas, agrupadas por UF, com os valores ac
 openapi: 'GET /diligences/districts'
 ---
 
-<Warning>
-Hoje a API emite apenas para **BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP**. Este endpoint também lista comarcas de UFs que ainda não estão liberadas na API, e pedir emissão nelas retorna erro. Confira as UFs disponíveis em [Certidões e emissores](/reference/todas-certidoes).
-</Warning>
-
 ## Como usar
 
 A resposta traz, em `data`, um objeto cuja chave é a UF e o valor é a lista de comarcas daquela UF, em ordem alfabética.
