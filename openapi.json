@@ -1253,20 +1253,54 @@
       },
       "ErrorResponse": {
         "type": "object",
+        "required": [
+          "message"
+        ],
         "properties": {
           "statusCode": {
             "type": "integer",
-            "description": "Mesmo código HTTP da resposta",
-            "example": 400
+            "description": "Status HTTP repetido no corpo",
+            "example": 404
           },
           "message": {
             "type": "string",
             "description": "Mensagem de erro",
-            "example": "Not enough credits"
+            "example": "Diligence not found"
           },
           "data": {
             "nullable": true,
-            "description": "Detalhe do erro, quando houver. Em erro de validação, é a lista de problemas (`code`, `path`, `message`)."
+            "description": "Detalhes do erro quando existem, como os problemas de validação ou os créditos necessários",
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST",
+              "UNAUTHORIZED",
+              "INVALID_TOKEN",
+              "FORBIDDEN",
+              "NOT_FOUND",
+              "ROUTE_NOT_FOUND",
+              "INSUFFICIENT_CREDITS",
+              "INTERNAL_ERROR"
+            ],
+            "description": "Código estável para tratar o erro no seu sistema",
+            "example": "NOT_FOUND"
+          },
+          "hint": {
+            "type": "string",
+            "description": "O que fazer para resolver",
+            "example": "Confira o id e se o recurso pertence à conta do token enviado em X-Api-Token."
           }
         }
       },
@@ -1368,9 +1402,12 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
-              "statusCode": 403,
-              "message": "Diligence not found",
-              "data": null
+              "error": "Unauthorized",
+              "statusCode": 401,
+              "message": "Missing or invalid api token",
+              "data": null,
+              "code": "UNAUTHORIZED",
+              "hint": "Envie o token no header X-Api-Token. Veja como gerar em https://docs.dihub.com.br/introduction/authentication."
             }
           }
         }
@@ -1385,7 +1422,9 @@
             "example": {
               "statusCode": 500,
               "message": "Internal Server Error",
-              "data": null
+              "data": null,
+              "code": "INTERNAL_ERROR",
+              "hint": "Erro do nosso lado. Tente de novo em alguns minutos; se continuar, envie ao suporte o valor do header X-Request-Id."
             }
           }
         }
