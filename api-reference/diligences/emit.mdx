@@ -8,7 +8,7 @@ openapi: 'POST /diligences/emit'
 
 - Os créditos são debitados na criação. A emissão das certidões é assíncrona: acompanhe com `GET /diligences/{id}/status`.
 - Máximo de 2 comarcas por requisição.
-- UFs liberadas na API: **AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP**. Pegue os valores de `state` e `district` em [`GET /diligences/districts`](/api-reference/diligences/districts).
+- Pegue os valores de `state` e `district` em [`GET /diligences/districts`](/api-reference/diligences/districts).
 - As certidões emitidas em cada UF estão em [Certidões e emissores](/reference/todas-certidoes).
 - `document` aceita CPF ou CNPJ, com ou sem pontuação. O CNPJ pode ser alfanumérico; os dígitos verificadores do CNPJ são validados.
 - Para CPF, a Análise DiHub só é feita se o titular tiver 18 anos ou mais.

@@ -6,9 +6,11 @@ icon: 'list-check'
 
 Esta página lista as certidões que `POST /diligences/emit` coloca em cada diligência hoje. O conjunto depende de três coisas:
 
-- **Documento** (`document`): CPF (11 dígitos) ou CNPJ (14 caracteres). Algumas certidões só se aplicam a um dos dois.
+- **Documento** (`document`): CPF (11 dígitos) ou CNPJ (14 caracteres).
 - **Estado da comarca** (`districts[].state`): define o pacote estadual.
-- **Comarca** (`districts[].district`): se for uma das cidades listadas em **Certidões municipais**, entra também a certidão municipal.
+- **Comarca** (`districts[].district`): define a comarca.
+
+Use [`GET /diligences/districts`](/api-reference/diligences/districts) para obter os valores exatos de `state` e `district` (ex.: `MG` / `BELO_HORIZONTE`) e validar a comarca antes de emitir.
 
 ## Análise DiHub
 
@@ -20,12 +22,6 @@ Análise gerada pela DiHub a partir de birôs de informação de crédito oficia
 - Informações de processos jurídicos
 
 Não substitui uma certidão oficial. Pode ser pedida com `creditAnalysis: true` (junto com as certidões) ou `creditAnalysisOnly: true` (sozinha). Para CPF, só é feita se o titular tiver 18 anos ou mais. Veja [Consumo de créditos](/reference/consumo-creditos).
-
-## Estados atendidos
-
-AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP.
-
-Use [`GET /diligences/districts`](/api-reference/diligences/districts) para obter os valores exatos de `state` e `district` (ex.: `MG` / `BELO_HORIZONTE`) e validar a comarca antes de emitir.
 
 ## Certidões federais
 
@@ -43,7 +39,7 @@ Entram em toda diligência, em qualquer estado atendido.
 Cada estado tem o próprio pacote: tributos estaduais, Ministério Público estadual, Justiça do Trabalho (TRT), Justiça Federal (TRF da região) e Justiça Estadual (TJ). Nem todo estado tem todas as categorias.
 
 <Note>
-  Com duas comarcas do mesmo estado, o pacote estadual sai uma vez só. A exceção é Minas Gerais: as certidões de 1ª instância do TJMG (cível, criminal, execução cível e as específicas de CPF ou CNPJ) saem uma vez para cada comarca.
+  Com duas comarcas do mesmo estado, o pacote estadual sai uma vez só.
 </Note>
 
 <AccordionGroup>
@@ -376,25 +372,25 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 
 Saem quando a comarca informada é uma das cidades abaixo. Valem para CPF e CNPJ. Em outras comarcas, a diligência sai sem certidão municipal.
 
-| Cidade | UF | Certidão | Emissor |
-|--------|:--:|----------|---------|
-| Maceió | AL | Certidão de Débitos Tributários Municipais - Maceió | MACEIÓ |
-| Salvador | BA | Certidão de Débitos Tributários Municipais - Salvador | SALVADOR |
-| Fortaleza | CE | Certidão de Débitos Tributários Municipais - Fortaleza | FORTALEZA |
-| Vitória | ES | Certidão de Débitos Tributários Municipais - Vitória | VITÓRIA |
-| Goiânia | GO | Certidão de Débitos Tributários Municipais - Goiânia | GOIÂNIA |
-| São Luís | MA | Certidão de Débitos Tributários Municipais - São Luís | SÃO LUÍS |
-| Belo Horizonte | MG | Certidão de Débitos Tributários Municipais - Belo Horizonte | PBH |
-| Divinópolis | MG | Certidão de Débitos Tributários Municipais - Divinópolis | DIVINÓPOLIS |
-| Uberlândia | MG | Certidão de Débitos Tributários Municipais - Uberlândia | Uberlândia |
-| Campo Grande | MS | Certidão de Débitos Tributários Municipais - Campo Grande | CAMPO GRANDE |
-| João Pessoa | PB | Certidão de Débitos Tributários Municipais - João Pessoa | JOÃO PESSOA |
-| Recife | PE | Certidão de Débitos Tributários Municipais - Recife | RECIFE |
-| Teresina | PI | Certidão de Débitos Tributários Municipais - Teresina | TERESINA |
-| Rio de Janeiro | RJ | Certidão de Débitos Tributários Municipais - Rio de Janeiro | RIO DE JANEIRO |
-| Porto Alegre | RS | Certidão de Débitos Tributários Municipais - Porto Alegre | PORTO ALEGRE |
-| São Paulo | SP | Certidão de Débitos Tributários Municipais - São Paulo | SÃO PAULO |
-| Sorocaba | SP | Certidão de Débitos Tributários Municipais - Sorocaba | SOROCABA |
+| Cidade | UF | Certidão |
+|--------|:--:|----------|
+| Maceió | AL | Certidão de Débitos Tributários Municipais - Maceió |
+| Salvador | BA | Certidão de Débitos Tributários Municipais - Salvador |
+| Fortaleza | CE | Certidão de Débitos Tributários Municipais - Fortaleza |
+| Vitória | ES | Certidão de Débitos Tributários Municipais - Vitória |
+| Goiânia | GO | Certidão de Débitos Tributários Municipais - Goiânia |
+| São Luís | MA | Certidão de Débitos Tributários Municipais - São Luís |
+| Belo Horizonte | MG | Certidão de Débitos Tributários Municipais - Belo Horizonte |
+| Divinópolis | MG | Certidão de Débitos Tributários Municipais - Divinópolis |
+| Uberlândia | MG | Certidão de Débitos Tributários Municipais - Uberlândia |
+| Campo Grande | MS | Certidão de Débitos Tributários Municipais - Campo Grande |
+| João Pessoa | PB | Certidão de Débitos Tributários Municipais - João Pessoa |
+| Recife | PE | Certidão de Débitos Tributários Municipais - Recife |
+| Teresina | PI | Certidão de Débitos Tributários Municipais - Teresina |
+| Rio de Janeiro | RJ | Certidão de Débitos Tributários Municipais - Rio de Janeiro |
+| Porto Alegre | RS | Certidão de Débitos Tributários Municipais - Porto Alegre |
+| São Paulo | SP | Certidão de Débitos Tributários Municipais - São Paulo |
+| Sorocaba | SP | Certidão de Débitos Tributários Municipais - Sorocaba |
 
 O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF) já cobre os tributos que seriam municipais.
 

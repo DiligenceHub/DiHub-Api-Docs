@@ -172,7 +172,7 @@
           "Diligências"
         ],
         "summary": "Listar estados e comarcas",
-        "description": "Retorna as comarcas cadastradas na DiHub, agrupadas por UF e em ordem alfabética. Os valores são exatamente os que `POST /diligences/emit` aceita em `state` e `district` (maiúsculas, sem acento, espaços trocados por `_`).\n\nA emissão pela API está liberada hoje para AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP. Veja [Certidões e emissores](/reference/todas-certidoes).",
+        "description": "Retorna as comarcas cadastradas na DiHub, agrupadas por UF e em ordem alfabética. Os valores são exatamente os que `POST /diligences/emit` aceita em `state` e `district` (maiúsculas, sem acento, espaços trocados por `_`).",
         "operationId": "listDistricts",
         "security": [
           {
@@ -213,21 +213,48 @@
                   "statusCode": 200,
                   "message": null,
                   "data": {
+                    "AL": [
+                      "MACEIO"
+                    ],
                     "BA": [
                       "SALVADOR"
+                    ],
+                    "CE": [
+                      "FORTALEZA"
                     ],
                     "DF": [
                       "BRASILIA"
                     ],
+                    "ES": [
+                      "VITORIA"
+                    ],
                     "GO": [
                       "ANAPOLIS",
                       "GOIANIA"
+                    ],
+                    "MA": [
+                      "SAO_LUIS"
                     ],
                     "MG": [
                       "BELO_HORIZONTE",
                       "CARATINGA",
                       "DIVINOPOLIS",
                       "UBERLANDIA"
+                    ],
+                    "MS": [
+                      "CAMPO_GRANDE"
+                    ],
+                    "PA": [
+                      "BELEM"
+                    ],
+                    "PB": [
+                      "JOAO_PESSOA"
+                    ],
+                    "PE": [
+                      "RECIFE"
+                    ],
+                    "PI": [
+                      "TERESINA"
                     ],
                     "RJ": [
                       "RIO_DE_JANEIRO"
@@ -237,7 +264,8 @@
                     ],
                     "SP": [
                       "CAMPINAS",
-                      "SAO_PAULO"
+                      "SAO_PAULO",
+                      "SOROCABA"
                     ]
                   }
                 }
@@ -259,7 +287,7 @@
           "Diligências"
         ],
         "summary": "Emitir diligência",
-        "description": "Cria uma diligência e debita os créditos na hora. A emissão das certidões é assíncrona: acompanhe por `GET /diligences/{id}/status`.\n\nTrês cenários:\n\n1. **Certidões**: `districts` com 1 ou 2 comarcas.\n2. **Certidões + Análise DiHub**: `districts` + `creditAnalysis: true`.\n3. **Só Análise DiHub**: `creditAnalysisOnly: true`, sem `districts`.\n\nUFs liberadas: AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP. Consulte as comarcas válidas em `GET /diligences/districts`.",
+        "description": "Cria uma diligência e debita os créditos na hora. A emissão das certidões é assíncrona: acompanhe por `GET /diligences/{id}/status`.\n\nTrês cenários:\n\n1. **Certidões**: `districts` com 1 ou 2 comarcas.\n2. **Certidões + Análise DiHub**: `districts` + `creditAnalysis: true`.\n3. **Só Análise DiHub**: `creditAnalysisOnly: true`, sem `districts`.\n\nConsulte as comarcas válidas em `GET /diligences/districts`.",
         "operationId": "emitDiligence",
         "security": [
           {
@@ -1153,8 +1181,7 @@
                 "type": "string",
                 "enum": [
                   "Em andamento",
-                  "Concluída",
-                  "Falha"
+                  "Concluída"
                 ],
                 "description": "Status geral da diligência"
               },
@@ -1202,8 +1229,7 @@
             "type": "string",
             "enum": [
               "IN_PROGRESS",
-              "COMPLETED",
-              "FAILED"
+              "COMPLETED"
             ],
             "description": "Status geral da diligência (valor bruto, em inglês)"
           },
@@ -1237,7 +1263,7 @@
         "properties": {
           "state": {
             "type": "string",
-            "description": "UF, em maiúsculas. Liberadas hoje: AL, BA, CE, DF, ES, GO, MA, MG, MS, PA, PB, PE, PI, RJ, RS e SP.",
+            "description": "UF, em maiúsculas.",
             "minLength": 1,
             "maxLength": 100,
             "example": "MG"
