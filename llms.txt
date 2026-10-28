@@ -1,12 +1,12 @@
 # DiHub Documentation
 
-> API da DiHub para emissão de diligências: certidões federais, estaduais e municipais de CPF ou CNPJ por comarca, com Análise DiHub opcional. Autenticação pelo header `X-Api-Token`. Produção: https://api.dihub.com.br (sem prefixo de versão). Homologação: https://homolog.api.dihubapp.com (acesso liberado pela DiHub). Estados atendidos: BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP.
+> API da DiHub para emissão de diligências: certidões federais, estaduais e municipais de CPF ou CNPJ por comarca, com Análise DiHub opcional. Autenticação pelo header `X-Api-Token`. Produção: https://api.dihub.com.br (sem prefixo de versão). Homologação: https://homolog.api.dihubapp.com (acesso liberado pela DiHub).
 
 Conteúdo completo de todas as páginas: https://docs.dihub.com.br/llms-full.txt
 
 ## Guia
 
-- [Comece por aqui](https://docs.dihub.com.br/index.md): o que a API faz, ambientes, estados atendidos e primeiros passos
+- [Comece por aqui](https://docs.dihub.com.br/index.md): o que a API faz, ambientes e primeiros passos
 - [Autenticação](https://docs.dihub.com.br/introduction/authentication.md): criar e desativar token, header `X-Api-Token`, validade de 90 dias, respostas 401
 - [Consumo de créditos](https://docs.dihub.com.br/reference/consumo-creditos.md): 1 crédito por diligência (até 2 comarcas no mesmo estado); 2 com comarcas em estados diferentes; +0,5 com Análise DiHub; 1 só a Análise DiHub
 - [Certidões e emissores](https://docs.dihub.com.br/reference/todas-certidoes.md): UFs disponíveis, certidões e emissores
@@ -42,7 +42,7 @@ Respostas JSON vêm em `{statusCode, message, data}`; exceções: 401 de autenti
 |--------|----------|-----------|
 | GET | /credits/balance | Saldo de créditos |
 | GET | /diligences | Lista as diligências do usuário |
-| GET | /diligences/districts | Comarcas por estado (pode incluir estados ainda não atendidos; ver lista acima) |
+| GET | /diligences/districts | Comarcas por estado |
 | POST | /diligences/emit | Emite uma diligência (certidões e/ou Análise DiHub) |
 | GET | /diligences/{id}/status | Status do processamento |
 | GET | /diligences/{id}/certificates | Certidões da diligência |

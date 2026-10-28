@@ -6,9 +6,11 @@ icon: 'list-check'
 
 Esta página lista as certidões que `POST /diligences/emit` coloca em cada diligência hoje. O conjunto depende de três coisas:
 
-- **Documento** (`document`): CPF (11 dígitos) ou CNPJ (14 caracteres). Algumas certidões só se aplicam a um dos dois.
+- **Documento** (`document`): CPF (11 dígitos) ou CNPJ (14 caracteres).
 - **Estado da comarca** (`districts[].state`): define o pacote estadual.
-- **Comarca** (`districts[].district`): se for uma das cidades listadas em **Certidões municipais**, entra também a certidão municipal.
+- **Comarca** (`districts[].district`): define a comarca.
+
+Use [`GET /diligences/districts`](/api-reference/diligences/districts) para obter os valores exatos de `state` e `district` (ex.: `MG` / `BELO_HORIZONTE`) e validar a comarca antes de emitir.
 
 ## Análise DiHub
 
@@ -20,16 +22,6 @@ Análise gerada pela DiHub a partir de birôs de informação de crédito oficia
 - Informações de processos jurídicos
 
 Não substitui uma certidão oficial. Pode ser pedida com `creditAnalysis: true` (junto com as certidões) ou `creditAnalysisOnly: true` (sozinha). Para CPF, só é feita se o titular tiver 18 anos ou mais. Veja [Consumo de créditos](/reference/consumo-creditos).
-
-## Estados atendidos
-
-BA, DF, ES, GO, MG, MS, PE, RJ, RS e SP.
-
-<Warning>
-  [`GET /diligences/districts`](/api-reference/diligences/districts) retorna as comarcas cadastradas e pode incluir estados que ainda não estão na lista acima. Emita só nos estados desta página: nos demais, a emissão retorna erro.
-</Warning>
-
-Use [`GET /diligences/districts`](/api-reference/diligences/districts) para obter os valores exatos de `state` e `district` (ex.: `MG` / `BELO_HORIZONTE`) e validar a comarca antes de emitir.
 
 ## Certidões federais
 
@@ -47,10 +39,29 @@ Entram em toda diligência, em qualquer estado atendido.
 Cada estado tem o próprio pacote: tributos estaduais, Ministério Público estadual, Justiça do Trabalho (TRT), Justiça Federal (TRF da região) e Justiça Estadual (TJ). Nem todo estado tem todas as categorias.
 
 <Note>
-  Com duas comarcas do mesmo estado, o pacote estadual sai uma vez só. A exceção é Minas Gerais: as certidões de 1ª instância do TJMG (cível, criminal, execução cível e as específicas de CPF ou CNPJ) saem uma vez para cada comarca.
+  Com duas comarcas do mesmo estado, o pacote estadual sai uma vez só.
 </Note>
 
 <AccordionGroup>
+  <Accordion title="Alagoas (AL)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - AL | SEFAZ AL |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 19ª Região | TRT 19ª Região |
+| Certidão Cível - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Criminal - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Cível - 1ª instância - Justiça Estadual - TJAL | TJAL |
+| Certidão Cível - 2ª instância - Justiça Estadual - TJAL | TJAL |
+| Certidão Criminal - 1ª instância - Justiça Estadual - TJAL | TJAL |
+| Certidão Criminal - 2ª instância - Justiça Estadual - TJAL | TJAL |
+| Certidão Cível de Execuções Fiscais - 1ª instância - Justiça Estadual - TJAL | TJAL |
+| Certidão Cível de Falência, Concordata e Recuperação Judicial - 1ª instância - Justiça Estadual - TJAL | TJAL |
+| Consulta Pública Processual - 1ª instância - Justiça Estadual - TJAL | TJAL |
+| Consulta Pública Processual - 2ª instância - Justiça Estadual - TJAL | TJAL |
+
+  </Accordion>
   <Accordion title="Bahia (BA)">
 
 | Certidão | Emissor |
@@ -75,6 +86,26 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 | Certidão Criminal - Juizado Especial - Justiça Estadual - TJBA | TJBA |
 | Consulta Pública Processual - 1ª Instância - Justiça Estadual - TJBA (PJe) | TJBA |
 | Consulta Pública Processual - 2ª Instância - Justiça Estadual - TJBA (PJe) | TJBA |
+
+  </Accordion>
+  <Accordion title="Ceará (CE)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - CE | SEFAZ CE |
+| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPCE | MPCE |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 7ª Região | TRT 7ª Região |
+| Certidão Cível - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Criminal - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Cível - Justiça Estadual - TJCE | TJCE |
+| Certidão Criminal - Justiça Estadual - TJCE | TJCE |
+| Certidão de Ação Possessória Petitória - Justiça Estadual - TJCE | TJCE |
+| Certidão de Inventário e Arrolamento - Justiça Estadual - TJCE | TJCE |
+| Certidão de Interdição, Tutela e Curatela - Justiça Estadual - TJCE | TJCE |
+| Consulta Pública Processual - 1ª instância - Justiça Estadual - TJCE (e-SAJ) | TJCE |
+| Consulta Pública Processual - 2ª instância - Justiça Estadual - TJCE (e-SAJ) | TJCE |
+| Consulta Pública Processual - Justiça Estadual - TJCE (PJe) | TJCE |
 
   </Accordion>
   <Accordion title="Distrito Federal (DF)">
@@ -121,11 +152,31 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 | Consulta Pública Processual - Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região |
 | Certidão Cível - 1ª instância - Justiça Estadual - TJGO | TJGO |
 | Certidão Cível - 2ª instância - Justiça Estadual - TJGO | TJGO |
-| Certidão Cível - 2ª instância - Justiça Estadual - TJGO | TJGO |
 | Certidão Criminal - 1ª instância - Justiça Estadual - TJGO | TJGO |
 | Certidão Criminal - 2ª instância - Justiça Estadual - TJGO | TJGO |
-| Certidão Criminal - 2ª instância - Justiça Estadual - TJGO | TJGO |
 | Consulta Pública Processual - Justiça Estadual - TJGO | TJGO |
+
+  </Accordion>
+  <Accordion title="Maranhão (MA)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - MA | SEFAZ MA |
+| Certidão de Dívida Ativa Estadual - MA | SEFAZ MA |
+| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPMA | MPMA |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 16ª Região | TRT 16ª Região |
+| Certidão Cível - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Certidão Criminal - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região |
+| Certidão Cível - 1ª instância - Justiça Estadual - TJMA | TJMA |
+| Certidão Cível - 2ª instância - Justiça Estadual - TJMA | TJMA |
+| Certidão Criminal - 1ª instância - Justiça Estadual - TJMA | TJMA |
+| Certidão Criminal - 2ª instância - Justiça Estadual - TJMA | TJMA |
+| Certidão Cível e Penal Online - 1ª instância - Justiça Estadual - TJMA | TJMA |
+| Certidão Cível e Penal Online - 2ª instância - Justiça Estadual - TJMA | TJMA |
+| Consulta Pública Processual - 1ª instância - Justiça Estadual - TJMA | TJMA |
+| Consulta Pública Processual - 2ª instância - Justiça Estadual - TJMA | TJMA |
+| Consulta Pública Processual - Juizados Especiais - Justiça Estadual - TJMA | TJMA |
 
   </Accordion>
   <Accordion title="Minas Gerais (MG)">
@@ -176,6 +227,48 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 | Consulta Pública Processual - 2ª instância - Justiça Estadual - TJMS (e-SAJ) | TJMS |
 
   </Accordion>
+  <Accordion title="Pará (PA)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - PA | SEFAZ PA |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 8ª Região | TRT 8ª Região |
+| Certidão de Ações Trabalhistas (Processos Físicos) - Justiça do Trabalho - TRT 8ª Região | TRT 8ª Região |
+| Certidão Cível - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Certidão Criminal - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região |
+| Certidão de Distribuição de Feitos Cíveis - Justiça Estadual - TJPA | TJPA |
+| Certidão Criminal (condenação com trânsito em julgado) - Justiça Estadual - TJPA | TJPA |
+| Certidão de Distribuição de Feitos de Família - Justiça Estadual - TJPA | TJPA |
+| Certidão de Distribuição de Inventário - Justiça Estadual - TJPA | TJPA |
+| Certidão de Distribuição de Interdição - Justiça Estadual - TJPA | TJPA |
+| Certidão de Distribuição de Falência e Recuperação Judicial - Justiça Estadual - TJPA | TJPA |
+| Consulta Pública Processual - Justiça Estadual - TJPA | TJPA |
+
+  </Accordion>
+  <Accordion title="Paraíba (PB)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - PB | SEFAZ PB |
+| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPPB | MPPB |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 13ª Região | TRT 13ª Região |
+| Certidão Cível - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Criminal - 1ª e 2ª instância - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 5ª Região | TRF 5ª Região |
+| Certidão Cível - 1ª instância - Justiça Estadual - TJPB | TJPB |
+| Certidão Cível - 2ª instância - Justiça Estadual - TJPB | TJPB |
+| Certidão Criminal - 1ª instância - Justiça Estadual - TJPB | TJPB |
+| Certidão Criminal - 2ª instância - Justiça Estadual - TJPB | TJPB |
+| Certidão Cível de Falência, Recuperação Judicial e Extrajudicial - Justiça Estadual - TJPB | TJPB |
+| Certidão de Execução Fiscal - Justiça Estadual - TJPB | TJPB |
+| Certidão Cível de Insolvência Civil - Justiça Estadual - TJPB | TJPB |
+| Certidão Cível de Tutela, Curatela e Interdição - Justiça Estadual - TJPB | TJPB |
+| Certidão Cível de Inventário - Justiça Estadual - TJPB | TJPB |
+| Consulta Pública Processual - 1ª instância - Justiça Estadual - TJPB | TJPB |
+| Consulta Pública Processual - 2ª instância - Justiça Estadual - TJPB | TJPB |
+
+  </Accordion>
   <Accordion title="Pernambuco (PE)">
 
 | Certidão | Emissor |
@@ -189,6 +282,24 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 | Certidão Cível - 2ª instância - Justiça Estadual - TJPE | TJPE |
 | Certidão Criminal - 1ª e 2ª instância - Justiça Estadual - TJPE | TJPE |
 | Consulta Pública Processual - Justiça Estadual - TJPE | TJPE |
+
+  </Accordion>
+  <Accordion title="Piauí (PI)">
+
+| Certidão | Emissor |
+|----------|---------|
+| Certidão de Débitos Tributários Estaduais - PI | SEFAZ PI |
+| Certidão de Procedimentos Extrajudiciais - Ministério Público Estadual - MPPI | MPPI |
+| Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 22ª Região | TRT 22ª Região |
+| Certidão Cível - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Certidão Criminal - Justiça Federal - TRF 1ª Região | TRF 1ª Região |
+| Consulta Pública Processual - Justiça Federal - TRF 1ª Região (PJe) | TRF 1ª Região |
+| Certidão Cível, Execução Cível e Criminal - Justiça Estadual - TJPI | TJPI |
+| Certidão de Execução Fiscal - Justiça Estadual - TJPI | TJPI |
+| Certidão de Inventário e Arrolamento - Justiça Estadual - TJPI | TJPI |
+| Certidão de Interdição, Curatela e Tutela - Justiça Estadual - TJPI | TJPI |
+| Certidão de Falência e Concordata - Justiça Estadual - TJPI | TJPI |
+| Consulta Pública Processual - Justiça Estadual - TJPI (Projudi) | TJPI |
 
   </Accordion>
   <Accordion title="Rio de Janeiro (RJ)">
@@ -215,7 +326,8 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 | Certidão de Ações Trabalhistas - Justiça do Trabalho - TRT 4ª Região | TRT 4ª Região |
 | Certidão Cível - 1ª e 2ª instância - Justiça Federal - TRF 4ª Região | TRF 4ª Região |
 | Certidão Criminal - 1ª e 2ª instância - Justiça Federal - TRF 4ª Região | TRF 4ª Região |
-| Consulta Pública Processual - Justiça Federal - TRF 4ª Região | TRF 4ª Região |
+| Consulta Pública Processual - 1ª instância - Justiça Federal - Seção Judiciária do Rio Grande do Sul | TRF 4ª Região |
+| Consulta Pública Processual - 2ª instância - Justiça Federal - TRF 4ª Região | TRF 4ª Região |
 | Certidão Cível - 1ª instância - Justiça Estadual - TJRS | TJRS |
 | Certidão Cível - 2ª instância - Justiça Estadual - TJRS | TJRS |
 | Certidão Criminal - 1ª instância - Justiça Estadual - TJRS | TJRS |
@@ -260,25 +372,25 @@ Cada estado tem o próprio pacote: tributos estaduais, Ministério Público esta
 
 Saem quando a comarca informada é uma das cidades abaixo. Valem para CPF e CNPJ. Em outras comarcas, a diligência sai sem certidão municipal.
 
-| Cidade | UF | Certidão | Emissor |
-|--------|:--:|----------|---------|
-| Maceió | AL | Certidão de Débitos Tributários Municipais - Maceió | MACEIÓ |
-| Salvador | BA | Certidão de Débitos Tributários Municipais - Salvador | SALVADOR |
-| Fortaleza | CE | Certidão de Débitos Tributários Municipais - Fortaleza | FORTALEZA |
-| Vitória | ES | Certidão de Débitos Tributários Municipais - Vitória | VITÓRIA |
-| Goiânia | GO | Certidão de Débitos Tributários Municipais - Goiânia | GOIÂNIA |
-| Belo Horizonte | MG | Certidão de Débitos Tributários Municipais - Belo Horizonte | PBH |
-| Caratinga | MG | Certidão de Débitos Tributários Municipais - Caratinga | CARATINGA |
-| Divinópolis | MG | Certidão de Débitos Tributários Municipais - Divinópolis | DIVINÓPOLIS |
-| Uberlândia | MG | Certidão de Débitos Tributários Municipais - Uberlândia | UBERLÂNDIA |
-| Campo Grande | MS | Certidão de Débitos Tributários Municipais - Campo Grande | CAMPO GRANDE |
-| João Pessoa | PB | Certidão de Débitos Tributários Municipais - João Pessoa | JOÃO PESSOA |
-| Recife | PE | Certidão de Débitos Tributários Municipais - Recife | RECIFE |
-| Teresina | PI | Certidão de Débitos Tributários Municipais - Teresina | TERESINA |
-| Rio de Janeiro | RJ | Certidão de Débitos Tributários Municipais - Rio de Janeiro | RIO DE JANEIRO |
-| Porto Alegre | RS | Certidão de Débitos Tributários Municipais - Porto Alegre | PORTO ALEGRE |
-| São Paulo | SP | Certidão de Débitos Tributários Municipais - São Paulo | SÃO PAULO |
-| Sorocaba | SP | Certidão de Débitos Tributários Municipais - Sorocaba | SOROCABA |
+| Cidade | UF | Certidão |
+|--------|:--:|----------|
+| Maceió | AL | Certidão de Débitos Tributários Municipais - Maceió |
+| Salvador | BA | Certidão de Débitos Tributários Municipais - Salvador |
+| Fortaleza | CE | Certidão de Débitos Tributários Municipais - Fortaleza |
+| Vitória | ES | Certidão de Débitos Tributários Municipais - Vitória |
+| Goiânia | GO | Certidão de Débitos Tributários Municipais - Goiânia |
+| São Luís | MA | Certidão de Débitos Tributários Municipais - São Luís |
+| Belo Horizonte | MG | Certidão de Débitos Tributários Municipais - Belo Horizonte |
+| Divinópolis | MG | Certidão de Débitos Tributários Municipais - Divinópolis |
+| Uberlândia | MG | Certidão de Débitos Tributários Municipais - Uberlândia |
+| Campo Grande | MS | Certidão de Débitos Tributários Municipais - Campo Grande |
+| João Pessoa | PB | Certidão de Débitos Tributários Municipais - João Pessoa |
+| Recife | PE | Certidão de Débitos Tributários Municipais - Recife |
+| Teresina | PI | Certidão de Débitos Tributários Municipais - Teresina |
+| Rio de Janeiro | RJ | Certidão de Débitos Tributários Municipais - Rio de Janeiro |
+| Porto Alegre | RS | Certidão de Débitos Tributários Municipais - Porto Alegre |
+| São Paulo | SP | Certidão de Débitos Tributários Municipais - São Paulo |
+| Sorocaba | SP | Certidão de Débitos Tributários Municipais - Sorocaba |
 
 O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF) já cobre os tributos que seriam municipais.
 
@@ -289,17 +401,22 @@ O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF)
 | RF | Receita Federal |
 | PGE RJ | Procuradoria Geral do Estado do Rio de Janeiro |
 | SEEC DF | Secretaria de Estado de Economia do Distrito Federal |
+| SEFAZ AL | Secretaria da Fazenda do Estado de Alagoas |
 | SEFAZ BA | Secretaria de Estado de Fazenda da Bahia |
+| SEFAZ CE | Secretaria da Fazenda do Estado do Ceará |
 | SEFAZ ES | Secretaria de Estado da Fazenda do Espírito Santo |
 | SEFAZ GO | Secretaria de Estado de Fazenda de Goiás |
+| SEFAZ MA | Secretaria da Fazenda do Estado do Maranhão |
 | SEFAZ MG | Secretaria de Estado de Fazenda de Minas Gerais |
 | SEFAZ MS | Secretaria de Estado de Fazenda de Mato Grosso do Sul |
+| SEFAZ PA | Secretaria da Fazenda do Estado do Pará |
+| SEFAZ PB | Secretaria da Fazenda do Estado da Paraíba |
 | SEFAZ PE | Secretaria da Fazenda do Estado de Pernambuco |
+| SEFAZ PI | Secretaria da Fazenda do Estado do Piauí |
 | SEFAZ RJ | Secretaria de Estado de Fazenda do Rio de Janeiro |
 | SEFAZ RS | Secretaria de Estado de Fazenda do Rio Grande do Sul |
 | SEFAZ SP | Secretaria de Estado de Fazenda de São Paulo |
 | CAMPO GRANDE | Prefeitura de Campo Grande |
-| CARATINGA | Prefeitura de Caratinga |
 | DIVINÓPOLIS | Prefeitura de Divinópolis |
 | FORTALEZA | Prefeitura de Fortaleza |
 | GOIÂNIA | Prefeitura de Goiânia |
@@ -310,18 +427,23 @@ O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF)
 | RECIFE | Prefeitura do Recife |
 | RIO DE JANEIRO | Prefeitura do Rio de Janeiro |
 | SALVADOR | Prefeitura de Salvador |
+| SÃO LUÍS | Prefeitura de São Luís |
 | SÃO PAULO | Prefeitura de São Paulo |
 | SOROCABA | Prefeitura de Sorocaba |
 | TERESINA | Prefeitura de Teresina |
-| UBERLÂNDIA | Prefeitura de Uberlândia |
+| Uberlândia | Prefeitura de Uberlândia |
 | VITÓRIA | Prefeitura de Vitória |
 | TST | Tribunal Superior do Trabalho |
 | MPF | Ministério Público Federal |
 | MPBA | Ministério Público da Bahia |
+| MPCE | Ministério Público do Ceará |
 | MPDFT | Ministério Público do Distrito Federal e Territórios |
 | MPGO | Ministério Público de Goiás |
+| MPMA | Ministério Público do Maranhão |
 | MPMG | Ministério Público de Minas Gerais |
 | MPMS | Ministério Público do Estado de Mato Grosso do Sul |
+| MPPB | Ministério Público da Paraíba |
+| MPPI | Ministério Público do Piauí |
 | MPSP | Ministério Público de São Paulo |
 | CENPROT SP | Central de Protestos do Estado de São Paulo |
 | TRT 1ª Região | Tribunal Regional do Trabalho da 1ª Região |
@@ -330,10 +452,16 @@ O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF)
 | TRT 4ª Região | Tribunal Regional do Trabalho da 4ª Região |
 | TRT 5ª Região | Tribunal Regional do Trabalho da 5ª Região |
 | TRT 6ª Região | Tribunal Regional do Trabalho da 6ª Região |
+| TRT 7ª Região | Tribunal Regional do Trabalho da 7ª Região |
+| TRT 8ª Região | Tribunal Regional do Trabalho da 8ª Região |
 | TRT 10ª Região | Tribunal Regional do Trabalho da 10ª Região |
+| TRT 13ª Região | Tribunal Regional do Trabalho da 13ª Região |
 | TRT 15ª Região | Tribunal Regional do Trabalho da 15ª Região |
+| TRT 16ª Região | Tribunal Regional do Trabalho da 16ª Região |
 | TRT 17ª Região | Tribunal Regional do Trabalho da 17ª Região |
 | TRT 18ª Região | Tribunal Regional do Trabalho da 18ª Região |
+| TRT 19ª Região | Tribunal Regional do Trabalho da 19ª Região |
+| TRT 22ª Região | Tribunal Regional do Trabalho da 22ª Região |
 | TRT 24ª Região | Tribunal Regional do Trabalho da 24ª Região |
 | TRF 1ª Região | Tribunal Regional Federal da 1ª Região |
 | TRF 2ª Região | Tribunal Regional Federal da 2ª Região |
@@ -341,13 +469,19 @@ O Distrito Federal não tem certidão municipal: a certidão distrital (SEEC DF)
 | TRF 4ª Região | Tribunal Regional Federal da 4ª Região |
 | TRF 5ª Região | Tribunal Regional Federal da 5ª Região |
 | TRF 6ª Região | Tribunal Regional Federal da 6ª Região |
+| TJAL | Tribunal de Justiça de Alagoas |
 | TJBA | Tribunal de Justiça da Bahia |
+| TJCE | Tribunal de Justiça do Ceará |
 | TJDFT | Tribunal de Justiça do Distrito Federal e Territórios |
 | TJES | Tribunal de Justiça do Espírito Santo |
 | TJGO | Tribunal de Justiça de Goiás |
+| TJMA | Tribunal de Justiça do Maranhão |
 | TJMG | Tribunal de Justiça de Minas Gerais |
 | TJMS | Tribunal de Justiça de Mato Grosso do Sul |
+| TJPA | Tribunal de Justiça do Pará |
+| TJPB | Tribunal de Justiça da Paraíba |
 | TJPE | Tribunal de Justiça de Pernambuco |
+| TJPI | Tribunal de Justiça do Piauí |
 | TJRJ | Tribunal de Justiça do Rio de Janeiro |
 | TJRS | Tribunal de Justiça do Rio Grande do Sul |
 | TJSP | Tribunal de Justiça de São Paulo |
