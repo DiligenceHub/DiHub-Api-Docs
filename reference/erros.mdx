@@ -1,0 +1,46 @@
+---
+title: 'Erros'
+description: 'Formato das respostas de erro da API DiHub, códigos estáveis e o que fazer em cada caso'
+icon: 'triangle-exclamation'
+---
+
+Toda resposta de erro da API vem em JSON com o mesmo formato. Use o campo `code` para tratar o erro no seu sistema: ele não muda quando a mensagem muda.
+
+```json
+{
+  "statusCode": 404,
+  "message": "Diligence not found",
+  "data": null,
+  "code": "NOT_FOUND",
+  "hint": "Confira o id e se o recurso pertence à conta do token enviado em X-Api-Token."
+}
+```
+
+| Campo | Descrição |
+|-------|-----------|
+| `statusCode` | Status HTTP, repetido no corpo |
+| `message` | Mensagem legível. Pode mudar de texto; não use para decidir o fluxo |
+| `data` | Detalhes, quando existem: os problemas de validação ou os créditos necessários. Senão, `null` |
+| `code` | Código estável do erro, da tabela abaixo |
+| `hint` | O que fazer para resolver |
+
+As respostas `401` mantêm também o campo `error` (`"Unauthorized"`).
+
+Falhas da infraestrutura antes da API, como timeout do gateway (`503`), podem chegar só com `message`. Trate a ausência de `code` como `INTERNAL_ERROR`.
+
+## Códigos
+
+| `code` | Status | Quando acontece | O que fazer |
+|--------|--------|-----------------|-------------|
+| `INVALID_REQUEST` | 400 | Parâmetros ou corpo fora do contrato | Compare com o [OpenAPI](/openapi.json). O campo `data` traz o que falhou |
+| `INSUFFICIENT_CREDITS` | 400 | Saldo menor que o custo da diligência | Consulte `GET /credits/balance` e veja [consumo de créditos](/reference/consumo-creditos) |
+| `UNAUTHORIZED` | 401 | Header `X-Api-Token` ausente | Envie o token. Veja [autenticação](/introduction/authentication) |
+| `INVALID_TOKEN` | 401 | Token inexistente ou expirado | Gere um novo token no painel |
+| `FORBIDDEN` | 403 | O recurso não pertence à conta do token | Confira o id e o token usado |
+| `NOT_FOUND` | 404 | Diligência, certidão ou documento não encontrado | Confira o id e o token usado |
+| `ROUTE_NOT_FOUND` | 404 | Método ou caminho inexistente | Veja os [endpoints](/api-reference/overview) |
+| `INTERNAL_ERROR` | 500 | Falha do nosso lado | Tente de novo em alguns minutos. Se continuar, envie ao suporte o valor do header `X-Request-Id` |
+
+<Info>
+  Toda resposta traz o header `X-Request-Id`. Guarde esse valor nos seus logs: com ele o suporte encontra a requisição.
+</Info>
