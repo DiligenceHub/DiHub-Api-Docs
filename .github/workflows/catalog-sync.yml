@@ -1,0 +1,99 @@
+name: Catálogo de prod → doc + core-api
+
+# Compara o catálogo de prod (Lambda catalogExport da core-api) com a doc e
+# as cópias de catálogo da core-api com o hydrogen. Divergência vira PR-lembrete.
+on:
+  repository_dispatch:
+    types: [hydrogen-catalog-changed]
+  schedule:
+    - cron: '0 11 * * 1' # segunda, 08:00 BRT
+  workflow_dispatch:
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write # OIDC para a role da AWS
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+    steps:
+      - name: Checkout DiHub-Api-Docs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: api-docs
+
+      - name: Checkout hydrogen (main)
+        uses: actions/checkout@v4
+        with:
+          repository: DiligenceHub/hydrogen
+          ref: main
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: hydrogen
+          fetch-depth: 0
+
+      - name: Checkout core-api (develop)
+        uses: actions/checkout@v4
+        with:
+          repository: DiligenceHub/core-api
+          ref: develop
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: core-api
+
+      - name: Credenciais AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CATALOG_EXPORT_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Catálogo de prod
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws lambda invoke --function-name core-api-prod-catalogExport \
+            --cli-binary-format raw-in-base64-out catalog.json > invoke.json
+          if jq -e '.FunctionError' invoke.json >/dev/null; then cat catalog.json; exit 1; fi
+          jq '{states: (.states | keys), statesWithoutScope}' catalog.json
+
+      - name: Contexto do disparo
+        env:
+          BEFORE: ${{ github.event.client_payload.before }}
+          AFTER: ${{ github.event.client_payload.after }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${AFTER:-}" ]; then
+            git -C hydrogen diff "$BEFORE" "$AFTER" -- src/libs/commom > hydrogen.diff
+            echo "Disparo: merge no hydrogen ($BEFORE..$AFTER)" > trigger.txt
+          else
+            : > hydrogen.diff
+            echo "Disparo: ${{ github.event_name }}" > trigger.txt
+          fi
+          wc -l hydrogen.diff
+
+      - name: Prompt
+        id: prompt
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'text<<PROMPT_EOF'
+            cat api-docs/.github/catalog-sync/prompt.md
+            echo 'PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claude compara e abre os PRs-lembrete
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: >-
+            --max-turns 80
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(jq:*),Bash(cat:*),Bash(ls:*),Bash(diff:*)"
