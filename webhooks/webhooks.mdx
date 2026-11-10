@@ -342,7 +342,7 @@ Se a sua conta faz parte de uma organização, um webhook pode receber as dilig�
     Lista os seus webhooks e, com a permissão, os da organização. O segredo não aparece.
   </Card>
   <Card title="PATCH /webhooks/{id}" href="/api-reference/webhooks/update">
-    Altera `url`, `events` ou `description`. `"isActive": false` pausa os envios e `true` retoma.
+    Altera `url`, `events` ou `description`. `"isActive": false` pausa os envios; os eventos desse período não são reenviados. `true` retoma.
   </Card>
   <Card title="DELETE /webhooks/{id}" href="/api-reference/webhooks/delete">
     Remove o webhook e cancela as entregas pendentes.
