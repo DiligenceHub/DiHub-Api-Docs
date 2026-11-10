@@ -376,7 +376,7 @@ O segredo antigo é cancelado na hora: a partir da troca, toda entrega sai assin
 ## Boas práticas
 
 - **Responda rápido.** Grave o evento e devolva `200`. O processamento fica para depois.
-- **Descarte repetidos pelo `webhook-id`.** Uma retentativa pode chegar depois de você já ter processado o evento, por exemplo quando a sua resposta se perde na rede.
-- **Não conte com a ordem de chegada.** Uma entrega que falhou é refeita minutos ou horas depois, então um evento pode chegar depois de outro mais novo. Use o `createdAt` do evento para saber o que aconteceu primeiro e ignore um evento mais antigo que o último que você já processou.
-- **Ignore tipos que você não conhece.** Responda `200` e siga. Eventos novos só chegam se você assinar, mas o `webhook.test` chega sempre.
 - **Combine o webhook com a API.** Se o `diligence.completed` chegar antes de algum `certificate.updated`, é porque uma entrega ficou para trás na retentativa. Nesse caso, consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) e [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates): a API sempre responde com a situação em tempo real.
+- **Não conte com a ordem de chegada.** Uma entrega que falhou é refeita minutos ou horas depois, então um evento pode chegar depois de outro mais novo.
+- **Descarte repetidos pelo `webhook-id`.** Uma retentativa pode chegar depois de você já ter processado o evento, por exemplo quando a sua resposta se perde na rede.
+- **Ignore tipos que você não conhece.** Responda `200` e siga. Eventos novos só chegam se você assinar, mas o `webhook.test` chega sempre.
