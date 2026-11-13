@@ -14,6 +14,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "mintlify": "^4.2.260"
+    "mintlify": "^4.3.19"
+  },
+  "overrides": {
+    "@mintlify/package-builder": {
+      "js-yaml": "^4.3.2"
+    }
   }
 }
