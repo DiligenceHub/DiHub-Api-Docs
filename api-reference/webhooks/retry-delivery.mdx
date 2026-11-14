@@ -4,4 +4,4 @@ description: 'Reenvia agora uma entrega que falhou, dos últimos 7 dias.'
 openapi: 'POST /webhooks/deliveries/{id}/retry'
 ---
 
-Só reenvia entrega `failed`, dos últimos 7 dias, de um webhook ativo. O `{id}` é o `id` da entrega em [`GET /webhooks/{id}/deliveries`](/api-reference/webhooks/deliveries). Como usar: [Webhooks](/webhooks/webhooks).
+Só reenvia entrega `failed`, dos últimos 7 dias, de um webhook ativo e de uma diligência cuja conta ainda existe (`owner_deleted` no `409`). O `{id}` é o `id` da entrega em [`GET /webhooks/{id}/deliveries`](/api-reference/webhooks/deliveries). Como usar: [Webhooks](/webhooks/webhooks).

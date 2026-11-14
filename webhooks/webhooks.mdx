@@ -36,7 +36,7 @@ Cada evento marca um momento da diligência. No cadastro você escolhe quais que
 
 Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 segundos. Qualquer outro status, redirecionamento, timeout ou erro de conexão conta como falha, e a DiHub tenta de novo algumas vezes: 1 minuto depois da primeira falha, depois de mais 5 minutos, depois de mais 30 minutos e, por último, depois de mais 2 horas. Todas as tentativas levam o mesmo `webhook-id`.
 
-A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eventos saem de uma vez, a primeira tentativa de alguns atrasa alguns segundos e a entrega fica `pending` com `attempts: 0` até a vez dela. Esse atraso não conta como tentativa.
+A DiHub espaça de 1 a 3 segundos os envios de um mesmo webhook. Quando vários eventos saem de uma vez, a primeira tentativa de alguns atrasa alguns segundos e a entrega fica `pending` com `attempts: 0` até a vez dela. Esse atraso não conta como tentativa.
 
 | Tentativa | Espera depois da anterior | Tempo desde o evento |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
 
 - São no máximo **5 tentativas** por evento. Depois da última, a entrega fica `failed`.
 - Responder `410 Gone` desativa o webhook na hora. Use quando a URL deixar de existir.
-- Se o webhook passar 5 dias seguidos sem nenhuma entrega com sucesso, a DiHub desativa o webhook. O `GET /webhooks` mostra `isActive: false` e o motivo em `disabledReason`. Reative com `PATCH /webhooks/{id}`.
+- Se o webhook passar 5 dias seguidos só com falhas, sem nenhuma entrega com sucesso, a DiHub desativa o webhook. A DiHub confere isso quando uma entrega esgota as tentativas; falha de reenvio manual e de `webhook.test` não conta. O `GET /webhooks` mostra `isActive: false` e o motivo em `disabledReason`. Reative com `PATCH /webhooks/{id}`.
 
 ## Passo a passo
 
@@ -71,7 +71,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
       Um ou mais entre `diligence.created`, `certificate.updated` e `diligence.completed`.
     </ParamField>
     <ParamField body="scope" type="string" default="user">
-      `user` recebe as suas diligências. `organization` recebe as de todos os membros da organização. Veja [Webhooks da organização](#webhooks-da-organização).
+      `user` recebe as suas diligências. `organization` recebe as de todos os membros da organização. Veja [Webhooks da organização](#webhooks-da-organização). O webhook `user` para de receber, sem aviso, se a sua conta perder **Acessar API** ou for inativada.
     </ParamField>
     <ParamField body="description" type="string">
       Nome para você reconhecer o webhook. Até 120 caracteres.
@@ -115,7 +115,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
     | 400 | URL sem `https`, apontando para `localhost` ou IP privado, evento desconhecido em `events`, ou limite de 3 webhooks no escopo atingido. |
     | 401 | Token ausente, inválido ou vencido. |
     | 403 | `scope` é `user` e a sua conta não tem **Acessar API**, ou `scope` é `organization` e você não tem as permissões **Gerenciar webhooks** e **Ver todas as diligências**. |
-    | 409 | A mesma URL já está cadastrada nesse escopo. Edite o webhook existente. |
+    | 409 | A mesma URL já está cadastrada nesse escopo. Edite o webhook existente; se quem cadastrou saiu da organização, remova e cadastre de novo. |
   </Step>
 
   <Step title="Valide a assinatura">
@@ -306,7 +306,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
     | --- | --- |
     | `pending` | Ainda não foi entregue. A próxima tentativa está em `nextAttemptAt`. |
     | `delivered` | O seu servidor respondeu `2xx` a tempo. |
-    | `failed` | As tentativas acabaram, ou o webhook foi removido, pausado ou desativado antes da entrega, ou a conta dona da diligência foi excluída. |
+    | `failed` | As tentativas acabaram, ou o webhook foi removido, pausado ou desativado antes da entrega, ou a conta dona da diligência foi excluída, ou quem cadastrou o webhook perdeu o acesso a ele (`cancelled: quem criou o webhook não tem mais acesso a ele`). |
   </Step>
 
   <Step title="Emita uma diligência e acompanhe">
@@ -326,7 +326,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
 
     Use depois de corrigir o seu servidor. O `{id}` é o `id` da entrega em `GET /webhooks/{id}/deliveries`, não o `eventId`. A DiHub faz uma tentativa na hora, sem esperar o intervalo das retentativas, e ela não conta no limite de 5.
 
-    Só reenvia entrega `failed`, dos últimos **7 dias**, de um webhook ativo e de uma diligência cuja conta ainda existe. Fora disso a rota responde `409` e o motivo vem em `data.reason`.
+    Só reenvia entrega `failed`, dos últimos **7 dias**, de um webhook ativo e de uma diligência cuja conta ainda existe. Fora disso a rota responde `409` e o motivo vem em `data.reason`. Quem não tem acesso ao webhook, como a conta de outro usuário ou quem perdeu a permissão, recebe `404`: **Acessar API** para webhook de usuário; **Gerenciar webhooks** e **Ver todas as diligências** para webhook da organização, e qualquer pessoa com elas pode reenviar.
 
     ```json Resposta 200
     {
@@ -347,7 +347,7 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
     | --- | --- |
     | `delivered` | O seu servidor respondeu `2xx`. A entrega passa a `delivered`. |
     | `failed` | O seu servidor falhou de novo. A entrega continua `failed`, com o motivo em `lastError`. |
-    | `scheduled` | Havia outro envio para a mesma URL na frente. A entrega volta a `pending` e sai na vez dela, sem consumir tentativa. Consulte `GET /webhooks/{id}/deliveries` depois. |
+    | `scheduled` | Havia outro envio do mesmo webhook na frente. A entrega volta a `pending` e sai na vez dela, sem consumir tentativa. Consulte `GET /webhooks/{id}/deliveries` depois. |
 
     | `data.reason` | Motivo do `409` |
     | --- | --- |
@@ -367,8 +367,8 @@ A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eve
 Se a sua conta faz parte de uma organização, um webhook pode receber as diligências de todos os membros.
 
 - **Permissão.** Só quem tem **Gerenciar webhooks** e **Ver todas as diligências** cadastra com `"scope": "organization"`. Administradores da organização têm por padrão.
-- **O webhook segue a permissão de quem cadastrou.** Se essa pessoa sair da organização ou perder **Gerenciar webhooks** ou **Ver todas as diligências**, o webhook para de receber, sem aviso e sem aparecer como desativado: `isActive` continua `true` e `GET /webhooks/{id}/deliveries` não mostra entregas novas. Cadastre com uma conta de administrador estável e, se ela sair, cadastre de novo com outra.
-- **Quem vê e edita.** Quem tem a permissão vê, edita e remove o webhook da organização.
+- **O webhook segue a permissão de quem cadastrou.** Se essa pessoa sair da organização ou perder **Acessar API**, **Gerenciar webhooks** ou **Ver todas as diligências**, o webhook para de receber, sem aviso e sem aparecer como desativado: `isActive` continua `true` e `GET /webhooks/{id}/deliveries` não mostra entregas novas. Cadastre com uma conta de administrador estável. Se ela sair, outra pessoa com as duas permissões precisa remover o webhook antigo (`DELETE /webhooks/{id}`) e cadastrar de novo. Editar não troca quem cadastrou.
+- **Quem vê e edita.** Quem tem as duas permissões vê, edita e remove o webhook da organização.
 - **O que chega.** Os eventos de qualquer diligência criada por um membro, pela API ou pelo Dashboard. Diligência de conta excluída, ou de quem já saiu da organização, não gera evento.
 
 <Note>
@@ -382,7 +382,7 @@ Se a sua conta faz parte de uma organização, um webhook pode receber as dilig�
     Cadastra um webhook e devolve o segredo.
   </Card>
   <Card title="GET /webhooks" href="/api-reference/webhooks/list">
-    Lista os seus webhooks e, com a permissão, os da organização. O segredo não aparece.
+    Lista os seus webhooks e, com as duas permissões, os da organização. O segredo não aparece.
   </Card>
   <Card title="PATCH /webhooks/{id}" href="/api-reference/webhooks/update">
     Altera `url`, `events` ou `description`. `"isActive": false` pausa os envios; os eventos desse período não são reenviados. `true` retoma.

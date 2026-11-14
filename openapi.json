@@ -1158,7 +1158,7 @@
             }
           },
           "400": {
-            "description": "URL inválida, evento desconhecido ou limite de 3 webhooks no escopo.",
+            "description": "URL que não é `https`, com credenciais, apontando para `localhost`, IP privado ou host que não resolve para IP público; evento desconhecido; ou limite de 3 webhooks no escopo.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1866,7 +1866,7 @@
           "Webhooks"
         ],
         "summary": "Reenviar entrega",
-        "description": "Reenvia agora uma entrega `failed`, ignorando o intervalo das retentativas. A tentativa não conta no limite de 5. Só vale para entregas dos últimos 7 dias, de um webhook ativo e de uma diligência cuja conta ainda existe.",
+        "description": "Reenvia agora uma entrega `failed`, ignorando o intervalo das retentativas. A tentativa não conta no limite de 5. Só vale para entregas dos últimos 7 dias, de um webhook ativo e de uma diligência cuja conta ainda existe. Precisa de acesso ao webhook: **Acessar API** para webhook de usuário; **Gerenciar webhooks** e **Ver todas as diligências** para webhook da organização. Sem ele a resposta é `404`.",
         "operationId": "retryWebhookDelivery",
         "security": [
           {
