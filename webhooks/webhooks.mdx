@@ -28,13 +28,15 @@ Cada evento marca um momento da diligência. No cadastro você escolhe quais que
 | Tipo | Quando |
 | --- | --- |
 | `diligence.created` | A diligência foi criada. |
-| `certificate.updated` | Uma certidão teve o status alterado. |
-| `diligence.completed` | Todas as certidões da diligência terminaram. |
+| `certificate.updated` | Uma certidão mudou de situação, de resultado ou ganhou arquivo. Mudanças internas que você não enxerga na API não geram evento. |
+| `diligence.completed` | Todas as certidões da diligência terminaram. Se a diligência for reaberta e terminar de novo, chega outro `diligence.completed`, com outro `webhook-id`. |
 | `webhook.test` | Você pediu um teste. |
 
 ## Entrega e retentativas
 
 Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 segundos. Qualquer outro status, redirecionamento, timeout ou erro de conexão conta como falha, e a DiHub tenta de novo algumas vezes: 1 minuto depois da primeira falha, depois de mais 5 minutos, depois de mais 30 minutos e, por último, depois de mais 2 horas. Todas as tentativas levam o mesmo `webhook-id`.
+
+A DiHub espaça de 1 a 3 segundos os envios para a mesma URL. Quando vários eventos saem de uma vez, a primeira tentativa de alguns atrasa alguns segundos e a entrega fica `pending` com `attempts: 0` até a vez dela. Esse atraso não conta como tentativa.
 
 | Tentativa | Espera depois da anterior | Tempo desde o evento |
 | --- | --- | --- |
@@ -112,7 +114,7 @@ Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 se
     | --- | --- |
     | 400 | URL sem `https`, apontando para `localhost` ou IP privado, evento desconhecido em `events`, ou limite de 3 webhooks no escopo atingido. |
     | 401 | Token ausente, inválido ou vencido. |
-    | 403 | `scope` é `organization` e você não tem a permissão **Gerenciar webhooks**. |
+    | 403 | `scope` é `user` e a sua conta não tem **Acessar API**, ou `scope` é `organization` e você não tem as permissões **Gerenciar webhooks** e **Ver todas as diligências**. |
     | 409 | A mesma URL já está cadastrada nesse escopo. Edite o webhook existente. |
   </Step>
 
@@ -272,7 +274,7 @@ Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 se
   <Step title="Confira as entregas">
     [`GET /webhooks/{id}/deliveries`](/api-reference/webhooks/deliveries)
 
-    Lista cada evento enviado ao webhook, com o status HTTP que o seu servidor respondeu, o número de tentativas e o último erro. Use quando um evento não aparecer do seu lado. Vem de 50 em 50 (`?page=2`) e aceita os filtros `status` e `type`.
+    Lista cada evento enviado ao webhook, com o status HTTP que o seu servidor respondeu, o número de tentativas e o último erro. Use quando um evento não aparecer do seu lado. Vem de 50 em 50 (`?page=2`, até a página 1000) e aceita os filtros `status` e `type`. O histórico guarda só os últimos 30 dias.
 
     ```json Resposta 200
     {
@@ -304,7 +306,7 @@ Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 se
     | --- | --- |
     | `pending` | Ainda não foi entregue. A próxima tentativa está em `nextAttemptAt`. |
     | `delivered` | O seu servidor respondeu `2xx` a tempo. |
-    | `failed` | As tentativas acabaram ou o webhook foi removido. |
+    | `failed` | As tentativas acabaram, ou o webhook foi removido, pausado ou desativado antes da entrega, ou a conta dona da diligência foi excluída. |
   </Step>
 
   <Step title="Emita uma diligência e acompanhe">
@@ -318,15 +320,56 @@ Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 se
 
     O formato de cada evento está em [Payloads](/webhooks/payloads).
   </Step>
+
+  <Step title="Reenvie uma entrega que falhou">
+    [`POST /webhooks/deliveries/{id}/retry`](/api-reference/webhooks/retry-delivery)
+
+    Use depois de corrigir o seu servidor. O `{id}` é o `id` da entrega em `GET /webhooks/{id}/deliveries`, não o `eventId`. A DiHub faz uma tentativa na hora, sem esperar o intervalo das retentativas, e ela não conta no limite de 5.
+
+    Só reenvia entrega `failed`, dos últimos **7 dias**, de um webhook ativo e de uma diligência cuja conta ainda existe. Fora disso a rota responde `409` e o motivo vem em `data.reason`.
+
+    ```json Resposta 200
+    {
+      "statusCode": 200,
+      "message": null,
+      "data": {
+        "id": "a71f9c03-2e5b-4d8a-b6c1-0f3e9d2a7b54",
+        "outcome": "delivered",
+        "status": "delivered",
+        "attempts": 3,
+        "lastStatusCode": 200,
+        "lastError": null
+      }
+    }
+    ```
+
+    | `outcome` | Significado |
+    | --- | --- |
+    | `delivered` | O seu servidor respondeu `2xx`. A entrega passa a `delivered`. |
+    | `failed` | O seu servidor falhou de novo. A entrega continua `failed`, com o motivo em `lastError`. |
+    | `scheduled` | Havia outro envio para a mesma URL na frente. A entrega volta a `pending` e sai na vez dela, sem consumir tentativa. Consulte `GET /webhooks/{id}/deliveries` depois. |
+
+    | `data.reason` | Motivo do `409` |
+    | --- | --- |
+    | `delivered` | A entrega já foi feita com sucesso. |
+    | `pending` | Ainda está nas tentativas automáticas. Só entrega `failed` pode ser reenviada. |
+    | `outside_window` | Passou de 7 dias. |
+    | `webhook_removed` | O webhook foi removido. |
+    | `webhook_paused` | O webhook está pausado ou desativado. Reative com `PATCH /webhooks/{id}` e tente de novo. |
+    | `owner_deleted` | A conta dona da diligência foi excluída. |
+
+    Entrega de outra conta ou inexistente responde `404`.
+  </Step>
 </Steps>
 
 ## Webhooks da organização
 
 Se a sua conta faz parte de uma organização, um webhook pode receber as diligências de todos os membros.
 
-- **Permissão.** Só quem tem **Gerenciar webhooks** cadastra com `"scope": "organization"`. Administradores da organização têm por padrão.
-- **O webhook é da organização.** Quem tem a permissão vê, edita e remove. Se quem cadastrou sair da organização, o webhook continua funcionando.
-- **O que chega.** Os eventos de qualquer diligência criada por um membro, pela API ou pelo Dashboard.
+- **Permissão.** Só quem tem **Gerenciar webhooks** e **Ver todas as diligências** cadastra com `"scope": "organization"`. Administradores da organização têm por padrão.
+- **O webhook segue a permissão de quem cadastrou.** Se essa pessoa sair da organização ou perder **Gerenciar webhooks** ou **Ver todas as diligências**, o webhook para de receber, sem aviso e sem aparecer como desativado: `isActive` continua `true` e `GET /webhooks/{id}/deliveries` não mostra entregas novas. Cadastre com uma conta de administrador estável e, se ela sair, cadastre de novo com outra.
+- **Quem vê e edita.** Quem tem a permissão vê, edita e remove o webhook da organização.
+- **O que chega.** Os eventos de qualquer diligência criada por um membro, pela API ou pelo Dashboard. Diligência de conta excluída, ou de quem já saiu da organização, não gera evento.
 
 <Note>
   Se você tem um webhook de usuário e outro da organização, as suas diligências chegam nos dois. Use URLs diferentes ou descarte repetidos pelo `webhook-id`.
@@ -356,6 +399,9 @@ Se a sua conta faz parte de uma organização, um webhook pode receber as dilig�
   <Card title="GET /webhooks/{id}/deliveries" href="/api-reference/webhooks/deliveries">
     Histórico de entregas.
   </Card>
+  <Card title="POST /webhooks/deliveries/{id}/retry" href="/api-reference/webhooks/retry-delivery">
+    Reenvia uma entrega que falhou, dos últimos 7 dias.
+  </Card>
 </CardGroup>
 
 ### Trocar o segredo
@@ -376,7 +422,7 @@ O segredo antigo é cancelado na hora: a partir da troca, toda entrega sai assin
 ## Boas práticas
 
 - **Responda rápido.** Grave o evento e devolva `200`. O processamento fica para depois.
-- **Combine o webhook com a API.** Se o `diligence.completed` chegar antes de algum `certificate.updated`, é porque uma entrega ficou para trás na retentativa. Nesse caso, consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) e [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates): a API sempre responde com a situação em tempo real.
+- **Combine o webhook com a API.** Se o `diligence.completed` chegar antes de algum `certificate.updated`, é porque uma entrega ficou para trás na retentativa. Nesse caso, consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) e [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates): a API sempre responde com a situação em tempo real. Concilie pela situação de cada certidão em `GET /diligences/{id}/certificates`, não pelos contadores: o `finishedCertificates` do webhook conta também a Potencialmente Positiva com observação, e o do `GET /diligences/{id}/status` conta só as Concluídas (por exemplo, 24/24 no webhook e 23/24 no GET).
 - **Não conte com a ordem de chegada.** Uma entrega que falhou é refeita minutos ou horas depois, então um evento pode chegar depois de outro mais novo.
 - **Descarte repetidos pelo `webhook-id`.** Uma retentativa pode chegar depois de você já ter processado o evento, por exemplo quando a sua resposta se perde na rede.
 - **Ignore tipos que você não conhece.** Responda `200` e siga. Eventos novos só chegam se você assinar, mas o `webhook.test` chega sempre.

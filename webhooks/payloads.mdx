@@ -4,7 +4,7 @@ description: 'Formato do corpo de cada evento de webhook.'
 icon: 'brackets-curly'
 ---
 
-Todo evento tem o mesmo envelope: `id` (igual ao header `webhook-id`), `type`, `createdAt` e `data`. O `data.status` traz os mesmos campos de [`GET /diligences/{id}/status`](/api-reference/diligences/status), e o `data.certificate` traz os de [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates).
+Todo evento tem o mesmo envelope: `id` (igual ao header `webhook-id`), `type`, `createdAt` e `data`. O `data.status` traz os campos de [`GET /diligences/{id}/status`](/api-reference/diligences/status), com uma diferença: no webhook, `finishedCertificates` conta também a certidão Potencialmente Positiva com observação, e o GET conta só as Concluídas. Por isso um `diligence.completed` com 24/24 pode aparecer como 23/24 no GET. Para conciliar, use a situação de cada certidão. Já o `data.certificate` traz os de [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates).
 
 <CodeGroup>
 ```json certificate.updated

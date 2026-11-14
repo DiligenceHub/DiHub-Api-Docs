@@ -1173,7 +1173,7 @@
             }
           },
           "403": {
-            "description": "`scope` organization sem a permissão Gerenciar webhooks.",
+            "description": "`scope` user sem a permissão Acessar API, ou `scope` organization sem as permissões Gerenciar webhooks e Ver todas as diligências.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1181,7 +1181,7 @@
                 },
                 "example": {
                   "statusCode": 403,
-                  "message": "Criar webhook de organização exige a permissão webhooks.manage",
+                  "message": "Criar webhook de organização exige as permissões webhooks.manage e diligences.view_all",
                   "data": null
                 }
               }
@@ -1235,7 +1235,8 @@
                         "certificate.updated",
                         "diligence.completed"
                       ]
-                    }
+                    },
+                    "maxItems": 10
                   },
                   "scope": {
                     "type": "string",
@@ -1261,7 +1262,7 @@
           "Webhooks"
         ],
         "summary": "Listar webhooks",
-        "description": "Lista os seus webhooks e, com a permissão Gerenciar webhooks, os da organização. O segredo não aparece.",
+        "description": "Lista os seus webhooks e, com as permissões Gerenciar webhooks e Ver todas as diligências, os da organização. O segredo não aparece.",
         "operationId": "listWebhooks",
         "security": [
           {
@@ -1428,7 +1429,8 @@
                         "certificate.updated",
                         "diligence.completed"
                       ]
-                    }
+                    },
+                    "maxItems": 10
                   },
                   "description": {
                     "type": "string",
@@ -1438,7 +1440,8 @@
                   "isActive": {
                     "type": "boolean"
                   }
-                }
+                },
+                "minProperties": 1
               }
             }
           }
@@ -1721,7 +1724,7 @@
           "Webhooks"
         ],
         "summary": "Listar entregas",
-        "description": "Histórico de entregas do webhook, de 50 em 50.",
+        "description": "Histórico de entregas do webhook, de 50 em 50, dos últimos 30 dias.",
         "operationId": "listWebhookDeliveries",
         "security": [
           {
@@ -1825,7 +1828,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "default": 1
+              "default": 1,
+              "maximum": 1000
             }
           },
           {
@@ -1854,6 +1858,197 @@
             }
           }
         ]
+      }
+    },
+    "/webhooks/deliveries/{id}/retry": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Reenviar entrega",
+        "description": "Reenvia agora uma entrega `failed`, ignorando o intervalo das retentativas. A tentativa não conta no limite de 5. Só vale para entregas dos últimos 7 dias, de um webhook ativo e de uma diligência cuja conta ainda existe.",
+        "operationId": "retryWebhookDelivery",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID da entrega, o `id` de `GET /webhooks/{id}/deliveries`"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tentativa feita. Em `outcome`: `delivered` (o servidor respondeu 2xx), `failed` (falhou de novo) ou `scheduled` (outro envio para a mesma URL estava na frente; a entrega volta a `pending` e sai na vez dela, sem consumir tentativa).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "delivered",
+                            "failed",
+                            "scheduled"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "delivered",
+                            "failed"
+                          ]
+                        },
+                        "attempts": {
+                          "type": "integer"
+                        },
+                        "lastStatusCode": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "lastError": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "a71f9c03-2e5b-4d8a-b6c1-0f3e9d2a7b54",
+                    "outcome": "delivered",
+                    "status": "delivered",
+                    "attempts": 3,
+                    "lastStatusCode": 200,
+                    "lastError": null
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entrega não encontrada ou de outra conta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Delivery not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A entrega não pode ser reenviada. O motivo vem em `data.reason`:\n\n- `delivered`: já foi entregue com sucesso.\n- `pending`: ainda está nas tentativas automáticas; só `failed` reenvia.\n- `outside_window`: passou de 7 dias.\n- `webhook_removed`: o webhook foi removido.\n- `webhook_paused`: o webhook está pausado ou desativado.\n- `owner_deleted`: a conta dona da diligência foi excluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "delivered": {
+                    "summary": "delivered",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Esta entrega já foi feita com sucesso e não pode ser reenviada",
+                      "data": {
+                        "reason": "delivered"
+                      }
+                    }
+                  },
+                  "pending": {
+                    "summary": "pending",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Esta entrega ainda está nas tentativas automáticas; só entregas com falha podem ser reenviadas",
+                      "data": {
+                        "reason": "pending"
+                      }
+                    }
+                  },
+                  "outside_window": {
+                    "summary": "outside_window",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Só entregas dos últimos 7 dias podem ser reenviadas",
+                      "data": {
+                        "reason": "outside_window"
+                      }
+                    }
+                  },
+                  "webhook_removed": {
+                    "summary": "webhook_removed",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "O webhook desta entrega foi removido; não é possível reenviar",
+                      "data": {
+                        "reason": "webhook_removed"
+                      }
+                    }
+                  },
+                  "webhook_paused": {
+                    "summary": "webhook_paused",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "O webhook desta entrega está pausado; reative-o para reenviar",
+                      "data": {
+                        "reason": "webhook_paused"
+                      }
+                    }
+                  },
+                  "owner_deleted": {
+                    "summary": "owner_deleted",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "A conta dona da diligência desta entrega foi excluída; não é possível reenviar",
+                      "data": {
+                        "reason": "owner_deleted"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
       }
     }
   },
