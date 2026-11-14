@@ -2,52 +2,47 @@ name: Catálogo de prod → doc + core-api
 
 # Compara o catálogo de prod (Lambda catalogExport da core-api) com a doc e
 # as cópias de catálogo da core-api com o hydrogen. Divergência vira PR-lembrete.
+#
+# Padrão "agente edita, shell abre o PR":
+# - `catalog` é o único job com OIDC/AWS. Entrega o catalog.json como artifact.
+# - Em `sync`, o Claude só lê e edita arquivos: sem git/gh, sem PAT, sem AWS e
+#   com o `.git` dos repos fora do workspace. O step seguinte, em shell, confere
+#   os caminhos alterados, faz o commit, dá push só em `automation/*` e abre ou
+#   atualiza o PR (idempotência aqui, não no prompt).
+# - `notify` abre/comenta uma issue quando qualquer job falha.
+# A role de CATALOG_EXPORT_ROLE_ARN só deve confiar em
+# `repo:DiligenceHub/DiHub-Api-Docs:ref:refs/heads/main` (ver corpo do PR #9).
 on:
   repository_dispatch:
     types: [hydrogen-catalog-changed]
   schedule:
     - cron: '0 11 * * 1' # segunda, 08:00 BRT
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só mostra o que faria: sem push e sem PR'
+        type: boolean
+        default: false
 
 concurrency:
   group: catalog-sync
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
-  sync:
+  catalog:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       id-token: write # OIDC para a role da AWS
-      contents: read
     env:
-      GH_TOKEN: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+      # Abaixo disso é falha do export, não mudança de catálogo. Ajuste se o
+      # catálogo encolher de verdade.
+      MIN_STATES: 10
     steps:
-      - name: Checkout DiHub-Api-Docs
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
-          path: api-docs
-
-      - name: Checkout hydrogen (main)
-        uses: actions/checkout@v4
-        with:
-          repository: DiligenceHub/hydrogen
-          ref: main
-          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
-          path: hydrogen
-          fetch-depth: 0
-
-      - name: Checkout core-api (develop)
-        uses: actions/checkout@v4
-        with:
-          repository: DiligenceHub/core-api
-          ref: develop
-          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
-          path: core-api
-
       - name: Credenciais AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.CATALOG_EXPORT_ROLE_ARN }}
           aws-region: us-east-1
@@ -58,8 +53,69 @@ jobs:
           set -euo pipefail
           aws lambda invoke --function-name core-api-prod-catalogExport \
             --cli-binary-format raw-in-base64-out catalog.json > invoke.json
-          if jq -e '.FunctionError' invoke.json >/dev/null; then cat catalog.json; exit 1; fi
+          if jq -e '.FunctionError' invoke.json >/dev/null; then
+            # Repo público: o payload de erro traz stack e host do banco. Só o tipo vai pro log.
+            echo "::error::catalogExport falhou: $(jq -r '.errorType // "sem errorType"' catalog.json 2>/dev/null || echo 'resposta não é JSON')"
+            exit 1
+          fi
+          states=$(jq '.states | length' catalog.json)
+          if [ "$states" -lt "$MIN_STATES" ]; then
+            echo "::error::catalog.json com $states UFs (mínimo $MIN_STATES). Nada foi aberto."
+            exit 1
+          fi
+          if ! jq -e '(.packages.FEDERAL_CPF | length > 0) and (.packages.FEDERAL_CNPJ | length > 0)' catalog.json >/dev/null; then
+            echo "::error::catalog.json sem os pacotes federais. Nada foi aberto."
+            exit 1
+          fi
           jq '{states: (.states | keys), statesWithoutScope}' catalog.json
+
+      - name: Guarda o catálogo
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalog
+          path: catalog.json
+          retention-days: 1
+          if-no-files-found: error
+
+  sync:
+    needs: catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout DiHub-Api-Docs (main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: api-docs
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout hydrogen (main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: DiligenceHub/hydrogen
+          ref: main
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: hydrogen
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout core-api (develop)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: DiligenceHub/core-api
+          ref: develop
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: core-api
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Catálogo de prod
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: catalog
 
       - name: Contexto do disparo
         env:
@@ -68,12 +124,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sha_re='^[0-9a-f]{40}$'
           if [ -n "${AFTER:-}" ]; then
-            git -C hydrogen diff "$BEFORE" "$AFTER" -- src/libs/commom > hydrogen.diff
+            if ! [[ "$AFTER" =~ $sha_re && "${BEFORE:-}" =~ $sha_re ]]; then
+              echo "::error::client_payload.before/after não são SHAs de 40 caracteres"
+              exit 1
+            fi
+            git -C hydrogen cat-file -e "${AFTER}^{commit}"
+            # Push que criou a branch manda before zerado: compara com o pai.
+            if ! git -C hydrogen cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              BEFORE=$(git -C hydrogen rev-parse --verify "${AFTER}^")
+            fi
+            git -C hydrogen diff --end-of-options "$BEFORE" "$AFTER" -- src/libs/commom > hydrogen.diff
             echo "Disparo: merge no hydrogen ($BEFORE..$AFTER)" > trigger.txt
           else
             : > hydrogen.diff
-            echo "Disparo: ${{ github.event_name }}" > trigger.txt
+            echo "Disparo: $GITHUB_EVENT_NAME" > trigger.txt
           fi
           wc -l hydrogen.diff
 
@@ -82,18 +148,222 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          delim="PROMPT_$(openssl rand -hex 16)"
           {
-            echo 'text<<PROMPT_EOF'
+            echo "text<<$delim"
             cat api-docs/.github/catalog-sync/prompt.md
-            echo 'PROMPT_EOF'
+            echo
+            echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Claude compara e abre os PRs-lembrete
-        uses: anthropics/claude-code-action@v1
+      - name: Tira o .git do alcance do agente
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in api-docs hydrogen core-api; do
+            mv "$repo/.git" "$RUNNER_TEMP/git-$repo"
+          done
+          # Cópia que o agente não alcança; a do workspace é só leitura para ele.
+          cp catalog.json "$RUNNER_TEMP/catalog.json"
+          mkdir out
+
+      # Sem PAT, sem AWS, sem git/gh: o agente só lê e edita arquivos.
+      # github_token = token do job (contents: read), para a action não pedir outro.
+      - name: Claude compara e edita
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          github_token: ${{ github.token }}
           prompt: ${{ steps.prompt.outputs.text }}
           claude_args: >-
             --max-turns 80
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(jq:*),Bash(cat:*),Bash(ls:*),Bash(diff:*)"
+            --permission-mode dontAsk
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(jq:*)"
+
+      - name: Abre ou atualiza os PRs-lembrete
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          # Ignora qualquer gitconfig global/de sistema: só vale o .git restaurado.
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: '1'
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          # Estado do shell fica em $state, fora do workspace (o agente escreve em out/).
+          state="$RUNNER_TEMP/catalog-sync"
+          mkdir -p "$state"
+          bot_name=dihub-catalog-bot
+          bot_email=catalog-bot@dihub.com.br
+
+          g() {
+            git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+              -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+              -c user.name="$bot_name" -c user.email="$bot_email" "$@"
+          }
+
+          # 1. Devolve o .git a cada repo; o agente não pode ter criado outro.
+          for repo in api-docs hydrogen core-api; do
+            if [ -L "$repo" ] || [ ! -d "$repo" ] || [ -e "$repo/.git" ]; then
+              echo "::error::$repo foi alterado fora do esperado (diretório ou .git)"
+              exit 1
+            fi
+            mv "$RUNNER_TEMP/git-$repo" "$repo/.git"
+          done
+
+          # 2. Só estes arquivos podem mudar.
+          check_paths() {
+            local dir=$1; shift
+            local changed path ok allowed
+            changed=$(g -C "$dir" status --porcelain=v1 -z --no-renames --untracked-files=all | tr '\0' '\n' | sed -E 's/^.. //')
+            while IFS= read -r path; do
+              if [ -z "$path" ]; then continue; fi
+              ok=false
+              for allowed in "$@"; do if [ "$path" = "$allowed" ]; then ok=true; fi; done
+              if [ "$ok" != true ] || [ -L "$dir/$path" ]; then
+                echo "::error::$dir: alteração fora do permitido: $path"
+                return 1
+              fi
+            done <<< "$changed"
+          }
+          check_paths hydrogen
+          check_paths api-docs reference/todas-certidoes.mdx api-reference/diligences/districts.mdx openapi.json
+          check_paths core-api src/enums/emission.enum.ts src/consts/certificateOrder.consts.ts \
+            src/routes/diligences/helpers/__tests__/emission.helper.spec.ts
+          jq empty api-docs/openapi.json
+
+          # 3. Resultado do agente: sem ele, a rodada não terminou.
+          pr_ok='. == null or ((.title | type == "string" and length > 0) and (.body | type == "string"))'
+          if [ -L out/result.json ] || ! [ -f out/result.json ]; then
+            echo "::error::Claude não gravou out/result.json (rodada incompleta)"
+            exit 1
+          fi
+          cp out/result.json "$state/result.json"
+          if ! jq -e "type == \"object\" and has(\"apiDocs\") and has(\"coreApi\") and (.apiDocs | $pr_ok) and (.coreApi | $pr_ok)" "$state/result.json" >/dev/null 2>&1; then
+            echo "::error::out/result.json fora do formato (rodada incompleta)"
+            exit 1
+          fi
+          result="$state/result.json"
+
+          # 4. Commit + push em automation/* + PR idempotente.
+          # publish <dir> <repo> <base> <branch> <draft> <allow_empty> <título> <arquivo do corpo>
+          publish() {
+            local dir=$1 repo=$2 base=$3 branch=$4 draft=$5 allow_empty=$6 title=$7 body=$8
+            local remote_sha foreign pr number is_draft
+            case "$branch" in automation/*) ;; *) echo "::error::branch fora de automation/*: $branch"; return 1 ;; esac
+
+            g -C "$dir" switch --quiet -c "$branch"
+            g -C "$dir" add -A
+            if g -C "$dir" diff --cached --quiet; then
+              if [ "$allow_empty" != true ]; then
+                echo "$repo: sem diferença, nada a abrir."
+                return 0
+              fi
+              g -C "$dir" commit --quiet --allow-empty -m "$title"
+            else
+              g -C "$dir" commit --quiet -m "$title"
+            fi
+
+            remote_sha=$(g -C "$dir" ls-remote --heads origin "refs/heads/$branch" | cut -f1)
+            if [ -n "$remote_sha" ]; then
+              g -C "$dir" fetch --quiet --no-tags origin "refs/heads/$branch"
+              foreign=$(g -C "$dir" log --format=%ae "$remote_sha" --not "origin/$base" | grep -vxF "$bot_email" || true)
+              if [ -n "$foreign" ]; then
+                echo "::error::$repo: $branch tem commit que não é do bot. Mergeie ou feche o PR e apague a branch."
+                return 1
+              fi
+            fi
+
+            if [ "$DRY_RUN" = true ]; then
+              echo "[dry-run] $repo: push em $branch, PR para $base (draft=$draft): $title"
+              g -C "$dir" show --stat --format=%s HEAD
+              return 0
+            fi
+
+            g -C "$dir" push --quiet --force-with-lease="refs/heads/$branch:$remote_sha" origin "HEAD:refs/heads/$branch"
+
+            pr=$(gh pr list -R "$repo" --head "$branch" --base "$base" --state open --json number,isDraft,url -q '.[0] // empty')
+            if [ -n "$pr" ]; then
+              number=$(jq -r .number <<< "$pr")
+              is_draft=$(jq -r .isDraft <<< "$pr")
+              gh pr edit "$number" -R "$repo" --title "$title" --body-file "$body" >/dev/null
+              if [ "$draft" = true ] && [ "$is_draft" != true ]; then
+                gh pr ready "$number" -R "$repo" --undo >/dev/null
+              fi
+              jq -r .url <<< "$pr" > "$state/${branch#automation/}.url"
+            else
+              local flags=()
+              if [ "$draft" = true ]; then flags+=(--draft); fi
+              gh pr create -R "$repo" --base "$base" --head "$branch" --title "$title" --body-file "$body" "${flags[@]}" > "$state/${branch#automation/}.url"
+            fi
+            echo "$repo: $(cat "$state/${branch#automation/}.url")"
+          }
+
+          # Doc: draft se a UF nova não tem escopo, se é só lembrete ou se alguma UF sai da doc.
+          if jq -e '.apiDocs != null' "$result" >/dev/null; then
+            ufs() { grep -oE '<Accordion title="[^"]*\(([A-Z]{2})\)">' | grep -oE '\([A-Z]{2}\)' | tr -d '()' | sort -u; }
+            removed=$(comm -23 <(g -C api-docs show origin/main:reference/todas-certidoes.mdx | ufs) <(ufs < api-docs/reference/todas-certidoes.mdx) | paste -sd, -)
+            added=$(comm -13 <(g -C api-docs show origin/main:reference/todas-certidoes.mdx | ufs) <(ufs < api-docs/reference/todas-certidoes.mdx))
+            unscoped=$(jq -r '.statesWithoutScope // [] | .[]' "$RUNNER_TEMP/catalog.json" | sort -u)
+            reminder=$(jq -r '.apiDocs.reminder == true' "$result")
+            draft=$(jq -r '.apiDocs.draft == true' "$result")
+            if [ -n "$removed" ]; then draft=true; fi
+            if [ -n "$(comm -12 <(echo "$added") <(echo "$unscoped") | sed '/^$/d')" ]; then draft=true; fi
+            if [ "$reminder" = true ]; then draft=true; fi
+            jq -r '.apiDocs.body' "$result" > "$state/api-docs-body.md"
+            if [ -n "$removed" ]; then
+              printf '\n\n> ⚠️ Remove da doc: %s. Confira se a UF saiu mesmo do catálogo antes de tirar do draft.\n' "$removed" >> "$state/api-docs-body.md"
+            fi
+            publish api-docs DiligenceHub/DiHub-Api-Docs main automation/catalog-sync \
+              "$draft" "$reminder" "$(jq -r '.apiDocs.title' "$result")" "$state/api-docs-body.md"
+          fi
+
+          # core-api: sempre draft (código gerado).
+          if jq -e '.coreApi != null' "$result" >/dev/null; then
+            jq -r '.coreApi.body' "$result" > "$state/core-api-body.md"
+            publish core-api DiligenceHub/core-api develop automation/core-api-catalog-sync \
+              true false "$(jq -r '.coreApi.title' "$result")" "$state/core-api-body.md"
+          fi
+
+          # Um PR cita o outro.
+          docs_url=$(cat "$state/catalog-sync.url" 2>/dev/null || true)
+          core_url=$(cat "$state/core-api-catalog-sync.url" 2>/dev/null || true)
+          if [ -n "$docs_url" ] && [ -n "$core_url" ]; then
+            printf '\n\nPR relacionado: %s\n' "$core_url" >> "$state/api-docs-body.md"
+            printf '\n\nPR relacionado: %s\n' "$docs_url" >> "$state/core-api-body.md"
+            gh pr edit "$docs_url" --body-file "$state/api-docs-body.md" >/dev/null
+            gh pr edit "$core_url" --body-file "$state/core-api-body.md" >/dev/null
+          fi
+
+          {
+            echo "### catalog-sync"
+            echo "- doc: ${docs_url:-sem PR}"
+            echo "- core-api: ${core_url:-sem PR}"
+            if [ "$DRY_RUN" = true ]; then echo "- dry-run: nada foi publicado"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    needs: [catalog, sync]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Abre ou comenta a issue de falha
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title='catalog-sync falhou'
+          number=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number,title \
+            -q ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [ -n "$number" ]; then
+            gh issue comment "$number" -R "$GITHUB_REPOSITORY" --body "Falhou de novo: $RUN_URL"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$title" \
+              --body "A sincronização do catálogo falhou e nenhum PR-lembrete foi garantido. Run: $RUN_URL"
+          fi
