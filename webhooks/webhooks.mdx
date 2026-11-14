@@ -1,17 +1,428 @@
 ---
 title: 'Webhooks'
-description: 'Notificações de eventos ainda não estão disponíveis'
+description: 'Receba no seu sistema cada avanço das suas diligências, sem consultar o status em intervalos.'
 icon: 'webhook'
 ---
 
-<Warning>
-  A API da DiHub ainda não envia webhooks. Não há cadastro de URL nem notificação de eventos.
-</Warning>
+Quando você cadastra um webhook, a DiHub faz um `POST` para a sua URL a cada evento: quando a diligência é criada, quando uma certidão muda de situação e quando a diligência termina. Vale para diligências criadas pela API e pelo Dashboard.
 
-Para saber quando uma diligência terminou, consulte o status periodicamente:
+`diligence.created` → `certificate.updated` (a cada mudança de uma certidão) → `diligence.completed`
 
-1. Emita a diligência com [`POST /diligences/emit`](/api-reference/diligences/emit) e guarde o `diligenceId` retornado.
-2. Consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) em intervalos até o processamento terminar.
-3. Baixe os arquivos com [`GET /diligences/{id}/download-zip`](/api-reference/diligences/download-zip) ou [`GET /diligences/{id}/download-pdf`](/api-reference/diligences/download-pdf).
+Cada entrega leva um corpo JSON e uma assinatura HMAC nos headers, no padrão [Standard Webhooks](https://www.standardwebhooks.com). Se o seu servidor não responder, a DiHub tenta de novo algumas vezes.
 
-Dúvidas: claudiolima@dihub.com.br.
+## Antes de começar
+
+- **Token de API.** As rotas de webhook usam o mesmo header `X-Api-Token` do resto da API. Veja [Autenticação](/introduction/authentication).
+- **Uma URL pública com HTTPS** no seu servidor para receber os eventos.
+- **Um ambiente para testar.** Comece em homologação e repita o cadastro em produção. Cada ambiente tem os próprios webhooks e segredos.
+
+| Ambiente | URL base |
+| --- | --- |
+| Produção | `https://api.dihub.com.br` |
+| Homologação | `https://homolog.api.dihubapp.com` |
+
+## Eventos
+
+Cada evento marca um momento da diligência. No cadastro você escolhe quais quer receber.
+
+| Tipo | Quando |
+| --- | --- |
+| `diligence.created` | A diligência foi criada. |
+| `certificate.updated` | Uma certidão mudou de situação, de resultado ou ganhou arquivo. Mudanças internas que você não enxerga na API não geram evento. |
+| `diligence.completed` | Todas as certidões da diligência terminaram. Se a diligência for reaberta e terminar de novo, chega outro `diligence.completed`, com outro `webhook-id`. |
+| `webhook.test` | Você pediu um teste. |
+
+## Entrega e retentativas
+
+Uma entrega conta como sucesso quando o seu servidor responde `2xx` em até 3 segundos. Qualquer outro status, redirecionamento, timeout ou erro de conexão conta como falha, e a DiHub tenta de novo algumas vezes: 1 minuto depois da primeira falha, depois de mais 5 minutos, depois de mais 30 minutos e, por último, depois de mais 2 horas. Todas as tentativas levam o mesmo `webhook-id`.
+
+A DiHub espaça de 1 a 3 segundos os envios de um mesmo webhook. Quando vários eventos saem de uma vez, a primeira tentativa de alguns atrasa alguns segundos e a entrega fica `pending` com `attempts: 0` até a vez dela. Esse atraso não conta como tentativa.
+
+| Tentativa | Espera depois da anterior | Tempo desde o evento |
+| --- | --- | --- |
+| 1 | imediata | 0 |
+| 2 | 1 min | 1 min |
+| 3 | 5 min | 6 min |
+| 4 | 30 min | 36 min |
+| 5 | 2 h | 2 h 36 min |
+
+- São no máximo **5 tentativas** por evento. Depois da última, a entrega fica `failed`.
+- Responder `410 Gone` desativa o webhook na hora. Use quando a URL deixar de existir.
+- Se o webhook passar 5 dias seguidos só com falhas, sem nenhuma entrega com sucesso, a DiHub desativa o webhook. A DiHub confere isso quando uma entrega esgota as tentativas; falha de reenvio manual e de `webhook.test` não conta. O `GET /webhooks` mostra `isActive: false` e o motivo em `disabledReason`. Reative com `PATCH /webhooks/{id}`.
+
+## Passo a passo
+
+<Steps>
+  <Step title="Prepare o endpoint">
+    Crie no seu servidor uma rota que aceite `POST` com JSON. Ela precisa:
+
+    - Usar `https`. O cadastro recusa `http`, `localhost` e IP privado.
+    - Responder com status `2xx` em até **3 segundos**. Grave o evento numa fila e processe depois. A DiHub lê só o status da resposta e ignora o corpo.
+    - Responder direto. Redirecionamentos (`301`, `302`) contam como falha.
+  </Step>
+
+  <Step title="Cadastre o webhook">
+    [`POST /webhooks`](/api-reference/webhooks/create)
+
+    <ParamField body="url" type="string" required>
+      URL `https` que recebe os eventos. Até 2048 caracteres.
+    </ParamField>
+    <ParamField body="events" type="string[]" required>
+      Um ou mais entre `diligence.created`, `certificate.updated` e `diligence.completed`.
+    </ParamField>
+    <ParamField body="scope" type="string" default="user">
+      `user` recebe as suas diligências. `organization` recebe as de todos os membros da organização. Veja [Webhooks da organização](#webhooks-da-organização). O webhook `user` para de receber, sem aviso, se a sua conta perder **Acessar API** ou for inativada.
+    </ParamField>
+    <ParamField body="description" type="string">
+      Nome para você reconhecer o webhook. Até 120 caracteres.
+    </ParamField>
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X POST 'https://homolog.api.dihubapp.com/webhooks' \
+      --header 'X-Api-Token: SEU_TOKEN' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "url": "https://seu-dominio.com.br/webhooks/dihub",
+        "events": ["diligence.created", "certificate.updated", "diligence.completed"],
+        "description": "Integração do ERP"
+      }'
+    ```
+
+    ```json Resposta 201
+    {
+      "statusCode": 201,
+      "message": null,
+      "data": {
+        "id": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+        "url": "https://seu-dominio.com.br/webhooks/dihub",
+        "events": ["diligence.created", "certificate.updated", "diligence.completed"],
+        "scope": "user",
+        "isActive": true,
+        "createdAt": "2026-11-09T17:20:00.000Z",
+        "secret": "whsec_k3vN8qT2…"
+      }
+    }
+    ```
+    </CodeGroup>
+
+    <Warning>
+      **Guarde o segredo agora.** O `secret` aparece só nesta resposta. Guarde no cofre de segredos do seu sistema. Se perder, gere outro com [`POST /webhooks/{id}/rotate-secret`](#trocar-o-segredo).
+    </Warning>
+
+    | Status | Quando |
+    | --- | --- |
+    | 400 | URL sem `https`, apontando para `localhost` ou IP privado, evento desconhecido em `events`, ou limite de 3 webhooks no escopo atingido. |
+    | 401 | Token ausente, inválido ou vencido. |
+    | 403 | `scope` é `user` e a sua conta não tem **Acessar API**, ou `scope` é `organization` e você não tem as permissões **Gerenciar webhooks** e **Ver todas as diligências**. |
+    | 409 | A mesma URL já está cadastrada nesse escopo. Edite o webhook existente; se quem cadastrou saiu da organização, remova e cadastre de novo. |
+  </Step>
+
+  <Step title="Valide a assinatura">
+    Antes de processar o corpo, confirme que ele veio da DiHub e não foi alterado. Toda entrega leva três headers:
+
+    | Header | Conteúdo |
+    | --- | --- |
+    | `webhook-id` | Id do evento, como `evt_6f1c2a90…`. É o mesmo em todas as tentativas do mesmo evento. |
+    | `webhook-timestamp` | Momento do envio, em segundos Unix. |
+    | `webhook-signature` | Uma ou mais assinaturas separadas por espaço, no formato `v1,<base64>`. |
+
+    1. Tire o prefixo `whsec_` do segredo e decodifique o resto de base64. O resultado é a chave.
+    2. Monte o texto `{webhook-id}.{webhook-timestamp}.{corpo}` com o corpo cru, exatamente como chegou. Não parseie o JSON antes.
+    3. Calcule o HMAC-SHA256 desse texto com a chave e codifique em base64.
+    4. Compare com cada assinatura `v1` do header, em tempo constante. Basta uma bater.
+    5. Rejeite se o `webhook-timestamp` estiver a mais de 5 minutos do seu relógio.
+
+    <CodeGroup>
+    ```text Prompt para IA
+    # Cole no Claude Code (ou no assistente de IA que você usa) dentro do seu projeto.
+
+    Crie no meu projeto uma rota POST /webhooks/dihub para receber os webhooks da DiHub.
+
+    Siga a documentação oficial: https://docs.dihub.com.br/webhooks/webhooks
+
+    - Valide a assinatura dos headers webhook-id, webhook-timestamp e webhook-signature
+      com o segredo da variável de ambiente DIHUB_WEBHOOK_SECRET.
+    - Use o corpo cru da requisição na validação.
+    - Recuse se a assinatura não bater ou se o timestamp tiver mais de 5 minutos.
+    - Responda 200 em menos de 3 segundos e processe o evento depois.
+    - Ignore eventos repetidos pelo webhook-id.
+    ```
+
+    ```javascript Node.js
+    import express from 'express'
+    import crypto from 'node:crypto'
+
+    const secret = process.env.DIHUB_WEBHOOK_SECRET // whsec_...
+    const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64')
+
+    const app = express()
+
+    // express.raw mantém o corpo cru, que é o que a assinatura cobre
+    app.post('/webhooks/dihub', express.raw({ type: 'application/json' }), (req, res) => {
+      const id = req.header('webhook-id')
+      const timestamp = Number(req.header('webhook-timestamp'))
+      const signatures = (req.header('webhook-signature') ?? '').split(' ')
+
+      if (!id || Math.abs(Date.now() / 1000 - timestamp) > 300) return res.sendStatus(400)
+
+      const expected = crypto
+        .createHmac('sha256', key)
+        .update(`${id}.${timestamp}.${req.body}`)
+        .digest()
+
+      const valid = signatures.some((entry) => {
+        const [version, value] = entry.split(',')
+        if (version !== 'v1' || !value) return false
+        const received = Buffer.from(value, 'base64')
+        return received.length === expected.length && crypto.timingSafeEqual(received, expected)
+      })
+      if (!valid) return res.sendStatus(401)
+
+      queue.add(JSON.parse(req.body)) // processe depois e responda logo
+      res.sendStatus(200)
+    })
+    ```
+
+    ```python Python
+    import base64, hashlib, hmac, os, time
+    from flask import Flask, abort, request
+
+    secret = os.environ["DIHUB_WEBHOOK_SECRET"]  # whsec_...
+    key = base64.b64decode(secret.removeprefix("whsec_"))
+
+    app = Flask(__name__)
+
+    @app.post("/webhooks/dihub")
+    def dihub_webhook():
+        msg_id = request.headers.get("webhook-id")
+        timestamp = request.headers.get("webhook-timestamp", "0")
+        signatures = request.headers.get("webhook-signature", "").split()
+
+        if not msg_id or abs(time.time() - int(timestamp)) > 300:
+            abort(400)
+
+        body = request.get_data()  # corpo cru
+        signed = f"{msg_id}.{timestamp}.".encode() + body
+        expected = base64.b64encode(hmac.new(key, signed, hashlib.sha256).digest()).decode()
+
+        valid = any(
+            hmac.compare_digest(entry.split(",", 1)[1], expected)
+            for entry in signatures
+            if entry.startswith("v1,")
+        )
+        if not valid:
+            abort(401)
+
+        enqueue(request.get_json())  # processe depois e responda logo
+        return "", 200
+    ```
+
+    ```text Biblioteca oficial
+    # A biblioteca do Standard Webhooks confere a assinatura e o horário.
+    # Node.js: npm install standardwebhooks
+    import { Webhook } from 'standardwebhooks'
+
+    const wh = new Webhook(process.env.DIHUB_WEBHOOK_SECRET.replace(/^whsec_/, ''))
+    const event = wh.verify(rawBody, headers) // lança erro se a assinatura não bater
+
+    # Python: pip install standardwebhooks
+    from standardwebhooks.webhooks import Webhook
+
+    wh = Webhook(os.environ["DIHUB_WEBHOOK_SECRET"].removeprefix("whsec_"))
+    event = wh.verify(raw_body, headers)  # lança erro se a assinatura não bater
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Envie um evento de teste">
+    [`POST /webhooks/{id}/test`](/api-reference/webhooks/test)
+
+    A DiHub envia um `webhook.test` para a sua URL, com o mesmo segredo e os mesmos headers de um evento real. Use para conferir a validação do passo 3 antes de emitir uma diligência. Você não precisa assinar esse tipo no cadastro.
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X POST 'https://homolog.api.dihubapp.com/webhooks/3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01/test' \
+      --header 'X-Api-Token: SEU_TOKEN'
+    ```
+
+    ```json Resposta 200
+    {
+      "statusCode": 200,
+      "message": null,
+      "data": {
+        "eventId": "evt_0b9d4e21-…",
+        "message": "Evento de teste enfileirado"
+      }
+    }
+    ```
+
+    ```json O que chega na sua URL
+    {
+      "id": "evt_0b9d4e21-…",
+      "type": "webhook.test",
+      "createdAt": "2026-11-09T17:22:41Z",
+      "data": {
+        "webhookId": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+        "message": "Evento de teste da DiHub"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Confira as entregas">
+    [`GET /webhooks/{id}/deliveries`](/api-reference/webhooks/deliveries)
+
+    Lista cada evento enviado ao webhook, com o status HTTP que o seu servidor respondeu, o número de tentativas e o último erro. Use quando um evento não aparecer do seu lado. Vem de 50 em 50 (`?page=2`, até a página 1000) e aceita os filtros `status` e `type`. O histórico guarda só os últimos 30 dias.
+
+    ```json Resposta 200
+    {
+      "statusCode": 200,
+      "message": null,
+      "data": {
+        "items": [
+          {
+            "id": "a71f9c03-2e5b-4d8a-b6c1-0f3e9d2a7b54",
+            "eventId": "evt_0b9d4e21-…",
+            "type": "webhook.test",
+            "status": "pending",
+            "attempts": 2,
+            "nextAttemptAt": "2026-11-09T17:28:41Z",
+            "lastStatusCode": 500,
+            "lastError": "HTTP 500",
+            "deliveredAt": null,
+            "createdAt": "2026-11-09T17:22:41Z"
+          }
+        ],
+        "page": 1,
+        "pageSize": 50,
+        "total": 1
+      }
+    }
+    ```
+
+    | `status` | Significado |
+    | --- | --- |
+    | `pending` | Ainda não foi entregue. A próxima tentativa está em `nextAttemptAt`. |
+    | `delivered` | O seu servidor respondeu `2xx` a tempo. |
+    | `failed` | As tentativas acabaram, ou o webhook foi removido, pausado ou desativado antes da entrega, ou a conta dona da diligência foi excluída, ou quem cadastrou o webhook perdeu o acesso a ele (`cancelled: quem criou o webhook não tem mais acesso a ele`). |
+  </Step>
+
+  <Step title="Emita uma diligência e acompanhe">
+    Emita com [`POST /diligences/emit`](/api-reference/diligences/emit) usando o mesmo token. Os eventos chegam nesta ordem típica:
+
+    1. `diligence.created`, logo depois da criação.
+    2. Um `certificate.updated` a cada mudança de situação de uma certidão.
+    3. `diligence.completed`, quando todas as certidões terminam.
+
+    Quando um `certificate.updated` chegar com `label` igual a `Concluída`, baixe o PDF pelo `certificate.fileUrl`. Se o link já tiver vencido, use [`GET /certificate/{id}/download-pdf`](/api-reference/certificates/download-pdf) com o `certificate.id` do evento.
+
+    O formato de cada evento está em [Payloads](/webhooks/payloads).
+  </Step>
+
+  <Step title="Reenvie uma entrega que falhou">
+    [`POST /webhooks/deliveries/{id}/retry`](/api-reference/webhooks/retry-delivery)
+
+    Use depois de corrigir o seu servidor. O `{id}` é o `id` da entrega em `GET /webhooks/{id}/deliveries`, não o `eventId`. A DiHub faz uma tentativa na hora, sem esperar o intervalo das retentativas, e ela não conta no limite de 5.
+
+    Só reenvia entrega `failed`, dos últimos **7 dias**, de um webhook ativo e de uma diligência cuja conta ainda existe. Fora disso a rota responde `409` e o motivo vem em `data.reason`. Quem não tem acesso ao webhook, como a conta de outro usuário ou quem perdeu a permissão, recebe `404`: **Acessar API** para webhook de usuário; **Gerenciar webhooks** e **Ver todas as diligências** para webhook da organização, e qualquer pessoa com elas pode reenviar.
+
+    ```json Resposta 200
+    {
+      "statusCode": 200,
+      "message": null,
+      "data": {
+        "id": "a71f9c03-2e5b-4d8a-b6c1-0f3e9d2a7b54",
+        "outcome": "delivered",
+        "status": "delivered",
+        "attempts": 3,
+        "lastStatusCode": 200,
+        "lastError": null
+      }
+    }
+    ```
+
+    | `outcome` | Significado |
+    | --- | --- |
+    | `delivered` | O seu servidor respondeu `2xx`. A entrega passa a `delivered`. |
+    | `failed` | O seu servidor falhou de novo. A entrega continua `failed`, com o motivo em `lastError`. |
+    | `scheduled` | Havia outro envio do mesmo webhook na frente. A entrega volta a `pending` e sai na vez dela, sem consumir tentativa. Consulte `GET /webhooks/{id}/deliveries` depois. |
+
+    | `data.reason` | Motivo do `409` |
+    | --- | --- |
+    | `delivered` | A entrega já foi feita com sucesso. |
+    | `pending` | Ainda está nas tentativas automáticas. Só entrega `failed` pode ser reenviada. |
+    | `outside_window` | Passou de 7 dias. |
+    | `webhook_removed` | O webhook foi removido. |
+    | `webhook_paused` | O webhook está pausado ou desativado. Reative com `PATCH /webhooks/{id}` e tente de novo. |
+    | `owner_deleted` | A conta dona da diligência foi excluída. |
+
+    Entrega de outra conta ou inexistente responde `404`.
+  </Step>
+</Steps>
+
+## Webhooks da organização
+
+Se a sua conta faz parte de uma organização, um webhook pode receber as diligências de todos os membros.
+
+- **Permissão.** Só quem tem **Gerenciar webhooks** e **Ver todas as diligências** cadastra com `"scope": "organization"`. Administradores da organização têm por padrão.
+- **O webhook segue a permissão de quem cadastrou.** Se essa pessoa sair da organização ou perder **Acessar API**, **Gerenciar webhooks** ou **Ver todas as diligências**, o webhook para de receber, sem aviso e sem aparecer como desativado: `isActive` continua `true` e `GET /webhooks/{id}/deliveries` não mostra entregas novas. Cadastre com uma conta de administrador estável. Se ela sair, outra pessoa com as duas permissões precisa remover o webhook antigo (`DELETE /webhooks/{id}`) e cadastrar de novo. Editar não troca quem cadastrou.
+- **Quem vê e edita.** Quem tem as duas permissões vê, edita e remove o webhook da organização.
+- **O que chega.** Os eventos de qualquer diligência criada por um membro, pela API ou pelo Dashboard. Diligência de conta excluída, ou de quem já saiu da organização, não gera evento.
+
+<Note>
+  Se você tem um webhook de usuário e outro da organização, as suas diligências chegam nos dois. Use URLs diferentes ou descarte repetidos pelo `webhook-id`.
+</Note>
+
+## Gerenciar webhooks
+
+<CardGroup cols={2}>
+  <Card title="POST /webhooks" href="/api-reference/webhooks/create">
+    Cadastra um webhook e devolve o segredo.
+  </Card>
+  <Card title="GET /webhooks" href="/api-reference/webhooks/list">
+    Lista os seus webhooks e, com as duas permissões, os da organização. O segredo não aparece.
+  </Card>
+  <Card title="PATCH /webhooks/{id}" href="/api-reference/webhooks/update">
+    Altera `url`, `events` ou `description`. `"isActive": false` pausa os envios; os eventos desse período não são reenviados. `true` retoma.
+  </Card>
+  <Card title="DELETE /webhooks/{id}" href="/api-reference/webhooks/delete">
+    Remove o webhook e cancela as entregas pendentes.
+  </Card>
+  <Card title="POST /webhooks/{id}/rotate-secret" href="/api-reference/webhooks/rotate-secret">
+    Gera um segredo novo e cancela o antigo na hora.
+  </Card>
+  <Card title="POST /webhooks/{id}/test" href="/api-reference/webhooks/test">
+    Envia um `webhook.test`.
+  </Card>
+  <Card title="GET /webhooks/{id}/deliveries" href="/api-reference/webhooks/deliveries">
+    Histórico de entregas.
+  </Card>
+  <Card title="POST /webhooks/deliveries/{id}/retry" href="/api-reference/webhooks/retry-delivery">
+    Reenvia uma entrega que falhou, dos últimos 7 dias.
+  </Card>
+</CardGroup>
+
+### Trocar o segredo
+
+O segredo antigo é cancelado na hora: a partir da troca, toda entrega sai assinada só com o segredo novo. Atualize o segredo no seu sistema logo depois de chamar a rota, senão a sua validação vai recusar as próximas entregas.
+
+```json Resposta 200
+{
+  "statusCode": 200,
+  "message": null,
+  "data": {
+    "id": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+    "secret": "whsec_P7wz1Rk9…"
+  }
+}
+```
+
+## Boas práticas
+
+- **Responda rápido.** Grave o evento e devolva `200`. O processamento fica para depois.
+- **Combine o webhook com a API.** Se o `diligence.completed` chegar antes de algum `certificate.updated`, é porque uma entrega ficou para trás na retentativa. Nesse caso, consulte [`GET /diligences/{id}/status`](/api-reference/diligences/status) e [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates): a API sempre responde com a situação em tempo real. Concilie pela situação de cada certidão em `GET /diligences/{id}/certificates`, não pelos contadores: o `finishedCertificates` do webhook conta também a Potencialmente Positiva com observação, e o do `GET /diligences/{id}/status` conta só as Concluídas (por exemplo, 24/24 no webhook e 23/24 no GET).
+- **Não conte com a ordem de chegada.** Uma entrega que falhou é refeita minutos ou horas depois, então um evento pode chegar depois de outro mais novo.
+- **Descarte repetidos pelo `webhook-id`.** Uma retentativa pode chegar depois de você já ter processado o evento, por exemplo quando a sua resposta se perde na rede.
+- **Ignore tipos que você não conhece.** Responda `200` e siga. Eventos novos só chegam se você assinar, mas o `webhook.test` chega sempre.

@@ -7,7 +7,7 @@ openapi: 'GET /diligences/{id}/status'
 ## Como ler a resposta
 
 - `status.label`: `Em andamento` ou `Concluída`.
-- `status.finishedCertificates` / `status.totalCertificates`: progresso da emissão.
+- `status.finishedCertificates` / `status.totalCertificates`: progresso da emissão. Conta só as certidões `Concluída`; o `data.status` de qualquer evento de webhook conta também a Potencialmente Positiva com observação, então os números podem diferir.
 - `subject.document` vem mascarado.
 
 Você pode consultar diligências criadas por você ou por outro usuário da mesma organização. Diligência de fora da organização retorna `403`.

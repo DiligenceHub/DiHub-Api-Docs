@@ -31,6 +31,10 @@
     {
       "name": "Certidões",
       "description": "Download de certidões individuais"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Cadastro e gestão de webhooks"
     }
   ],
   "paths": {
@@ -771,7 +775,8 @@
                           "id": "9b2d7c1e-4f3a-4b8e-a1d2-3c4b5a6f7e8d",
                           "certificateName": "Certidão de Débitos Tributários Federais e da Dívida Ativa da União",
                           "emissionResultStatus": "Concluída",
-                          "certificateStatus": "Negativa"
+                          "certificateStatus": "Negativa",
+                          "observations": null
                         }
                       ],
                       "TJMG - Tribunal de Justiça de Minas Gerais": [
@@ -779,13 +784,15 @@
                           "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
                           "certificateName": "Certidão Cível - 1ª instância - Justiça Estadual - TJMG",
                           "emissionResultStatus": "Concluída",
-                          "certificateStatus": "Positiva"
+                          "certificateStatus": "Positiva",
+                          "observations": null
                         },
                         {
                           "id": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b",
                           "certificateName": "Certidão Criminal - 1ª instância - Justiça Estadual - TJMG",
                           "emissionResultStatus": "Em andamento",
-                          "certificateStatus": null
+                          "certificateStatus": null,
+                          "observations": null
                         }
                       ]
                     },
@@ -1094,6 +1101,955 @@
           }
         }
       }
+    },
+    "/webhooks": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Cadastrar webhook",
+        "description": "Cadastra um webhook e devolve o segredo, que só aparece nesta resposta.",
+        "operationId": "createWebhook",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WebhookCreated"
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 201,
+                  "message": null,
+                  "data": {
+                    "id": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+                    "url": "https://seu-dominio.com.br/webhooks/dihub",
+                    "events": [
+                      "diligence.created",
+                      "certificate.updated",
+                      "diligence.completed"
+                    ],
+                    "scope": "user",
+                    "isActive": true,
+                    "createdAt": "2026-11-09T17:20:00.000Z",
+                    "secret": "whsec_k3vN8qT2…"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "URL que não é `https`, com credenciais, apontando para `localhost`, IP privado ou host que não resolve para IP público; evento desconhecido; ou limite de 3 webhooks no escopo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Limite de 3 webhooks por escopo atingido",
+                  "data": null
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`scope` user sem a permissão Acessar API, ou `scope` organization sem as permissões Gerenciar webhooks e Ver todas as diligências.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "message": "Criar webhook de organização exige as permissões webhooks.manage e diligences.view_all",
+                  "data": null
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A mesma URL já está cadastrada nesse escopo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 409,
+                  "message": "Já existe um webhook com esta URL neste escopo",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url",
+                  "events"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "description": "URL `https` que recebe os eventos."
+                  },
+                  "events": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "diligence.created",
+                        "certificate.updated",
+                        "diligence.completed"
+                      ]
+                    },
+                    "maxItems": 10
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "organization"
+                    ],
+                    "default": "user"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "description": "Nome para você reconhecer o webhook."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Listar webhooks",
+        "description": "Lista os seus webhooks e, com as permissões Gerenciar webhooks e Ver todas as diligências, os da organização. O segredo não aparece.",
+        "operationId": "listWebhooks",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Webhook"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/webhooks/{id}": {
+      "patch": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Atualizar webhook",
+        "description": "Altera `url`, `events` ou `description`. `isActive: false` pausa os envios; os eventos desse período não são reenviados. `true` retoma. Envie ao menos um campo.",
+        "operationId": "updateWebhook",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Webhook"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corpo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Envie ao menos um campo para atualizar",
+                  "data": null
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Webhook não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Webhook not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A mesma URL já está cadastrada nesse escopo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 409,
+                  "message": "Já existe um webhook com esta URL neste escopo",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID do webhook"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  "events": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "diligence.created",
+                        "certificate.updated",
+                        "diligence.completed"
+                      ]
+                    },
+                    "maxItems": 10
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "minProperties": 1
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Remover webhook",
+        "description": "Remove o webhook e cancela as entregas pendentes.",
+        "operationId": "deleteWebhook",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "deleted": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+                    "deleted": true
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Webhook não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Webhook not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID do webhook"
+          }
+        ]
+      }
+    },
+    "/webhooks/{id}/rotate-secret": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Rotacionar segredo",
+        "description": "Gera um segredo novo e cancela o antigo na hora.",
+        "operationId": "rotateWebhookSecret",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "secret": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "3f6c1e2a-8b4d-4c7e-9a10-5d2b7e9c4f01",
+                    "secret": "whsec_P7wz1Rk9…"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Webhook não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Webhook not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID do webhook"
+          }
+        ]
+      }
+    },
+    "/webhooks/{id}/test": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Enviar teste",
+        "description": "Envia um `webhook.test` para a URL do webhook.",
+        "operationId": "testWebhook",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "eventId": "evt_0b9d4e21-…",
+                    "message": "Evento de teste enfileirado"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Webhook não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Webhook not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID do webhook"
+          }
+        ]
+      }
+    },
+    "/webhooks/{id}/deliveries": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Listar entregas",
+        "description": "Histórico de entregas do webhook, de 50 em 50, dos últimos 30 dias.",
+        "operationId": "listWebhookDeliveries",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WebhookDelivery"
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "example": 50
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Filtro inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Corpo inválido",
+                  "data": null
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Webhook não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Webhook not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID do webhook"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "delivered",
+                "failed"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "diligence.created",
+                "certificate.updated",
+                "diligence.completed",
+                "webhook.test"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/webhooks/deliveries/{id}/retry": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Reenviar entrega",
+        "description": "Reenvia agora uma entrega `failed`, ignorando o intervalo das retentativas. A tentativa não conta no limite de 5. Só vale para entregas dos últimos 7 dias, de um webhook ativo e de uma diligência cuja conta ainda existe. Precisa de acesso ao webhook: **Acessar API** para webhook de usuário; **Gerenciar webhooks** e **Ver todas as diligências** para webhook da organização. Sem ele a resposta é `404`.",
+        "operationId": "retryWebhookDelivery",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID da entrega, o `id` de `GET /webhooks/{id}/deliveries`"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tentativa feita. Em `outcome`: `delivered` (o servidor respondeu 2xx), `failed` (falhou de novo) ou `scheduled` (outro envio para a mesma URL estava na frente; a entrega volta a `pending` e sai na vez dela, sem consumir tentativa).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "delivered",
+                            "failed",
+                            "scheduled"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "delivered",
+                            "failed"
+                          ]
+                        },
+                        "attempts": {
+                          "type": "integer"
+                        },
+                        "lastStatusCode": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "lastError": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "statusCode": 200,
+                  "message": null,
+                  "data": {
+                    "id": "a71f9c03-2e5b-4d8a-b6c1-0f3e9d2a7b54",
+                    "outcome": "delivered",
+                    "status": "delivered",
+                    "attempts": 3,
+                    "lastStatusCode": 200,
+                    "lastError": null
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entrega não encontrada ou de outra conta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Delivery not found",
+                  "data": null
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A entrega não pode ser reenviada. O motivo vem em `data.reason`:\n\n- `delivered`: já foi entregue com sucesso.\n- `pending`: ainda está nas tentativas automáticas; só `failed` reenvia.\n- `outside_window`: passou de 7 dias.\n- `webhook_removed`: o webhook foi removido.\n- `webhook_paused`: o webhook está pausado ou desativado.\n- `owner_deleted`: a conta dona da diligência foi excluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "delivered": {
+                    "summary": "delivered",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Esta entrega já foi feita com sucesso e não pode ser reenviada",
+                      "data": {
+                        "reason": "delivered"
+                      }
+                    }
+                  },
+                  "pending": {
+                    "summary": "pending",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Esta entrega ainda está nas tentativas automáticas; só entregas com falha podem ser reenviadas",
+                      "data": {
+                        "reason": "pending"
+                      }
+                    }
+                  },
+                  "outside_window": {
+                    "summary": "outside_window",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Só entregas dos últimos 7 dias podem ser reenviadas",
+                      "data": {
+                        "reason": "outside_window"
+                      }
+                    }
+                  },
+                  "webhook_removed": {
+                    "summary": "webhook_removed",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "O webhook desta entrega foi removido; não é possível reenviar",
+                      "data": {
+                        "reason": "webhook_removed"
+                      }
+                    }
+                  },
+                  "webhook_paused": {
+                    "summary": "webhook_paused",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "O webhook desta entrega está pausado; reative-o para reenviar",
+                      "data": {
+                        "reason": "webhook_paused"
+                      }
+                    }
+                  },
+                  "owner_deleted": {
+                    "summary": "owner_deleted",
+                    "value": {
+                      "statusCode": 409,
+                      "message": "A conta dona da diligência desta entrega foi excluída; não é possível reenviar",
+                      "data": {
+                        "reason": "owner_deleted"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1342,6 +2298,11 @@
               "Potencialmente Positiva"
             ],
             "description": "Resultado da certidão. `null` enquanto não há resultado."
+          },
+          "observations": {
+            "type": "string",
+            "nullable": true,
+            "description": "Observação da DiHub sobre o resultado, quando houver. Aparece em certidões Potencialmente Positiva que têm observação; nos outros casos vem null."
           }
         }
       },
@@ -1355,6 +2316,162 @@
           "message": {
             "type": "string",
             "example": "Invalid token"
+          }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "diligence.created",
+                "certificate.updated",
+                "diligence.completed"
+              ]
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "organization"
+            ]
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "disabledReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Motivo da desativação automática, quando houver."
+          },
+          "failingSince": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookCreated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "diligence.created",
+                "certificate.updated",
+                "diligence.completed"
+              ]
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "organization"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Segredo `whsec_…`. Aparece só nesta resposta."
+          }
+        }
+      },
+      "WebhookDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "diligence.created",
+              "certificate.updated",
+              "diligence.completed",
+              "webhook.test"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "delivered",
+              "failed"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastStatusCode": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }
