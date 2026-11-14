@@ -5,7 +5,8 @@
 # bodies come from the templates below; no free text from the agent.
 #
 # cwd: workspace with fresh checkouts in api-docs/ and core-api/.
-# env: CS_PAT and GH_TOKEN (PAT), IN_DIR (artifact), CATALOG (catalog.json from
+# env: CS_PAT and GH_TOKEN (write PAT), CS_KEY_TOKEN (read-only token, only to
+#      rederive the artifact key), IN_DIR (artifact), CATALOG (catalog.json from
 #      the catalog job), DRY_RUN, BEFORE, AFTER, RUN_URL, GIT_CONFIG_GLOBAL=/dev/null.
 set -euo pipefail
 export LC_ALL=C
@@ -29,6 +30,7 @@ fail() { echo "::error::$*"; exit 1; }
 
 # 1. Decrypt: fixed names only, regular files only. Nothing else in the artifact is read.
 if [ -z "${CS_PAT:-}" ]; then fail "DOCS_AUTOMATION_TOKEN vazio"; fi
+if [ -z "${CS_KEY_TOKEN:-}" ]; then fail "DOCS_READONLY_TOKEN vazio"; fi
 key=$(cs_derive_key)
 echo "::add-mask::$key"
 printf '%s' "$key" > "$state/key"
@@ -56,44 +58,18 @@ for f in "${CS_FILES[@]}"; do
   if grep -qE -- "$secret_re" "$(p "$f")"; then fail "$f contém algo com cara de credencial"; fi
 done
 
-# 4. Content: each changed line must look like what the agent is supposed to change.
-# Only the line count goes to the log (public repo), never the content.
-# added <file in checkout> -> $state/lines (lines the agent added). Exit 1 = differ; >1 = error.
-added() {
-  local rc=0
-  g diff --no-index --no-color -U0 -- "$1" "$(p "$1")" > "$state/diff" || rc=$?
-  if [ "$rc" -gt 1 ]; then fail "diff de $1 falhou"; fi
-  awk '/^@@/ { h = 1; next } h && /^\+/ { print substr($0, 2) }' "$state/diff" > "$state/lines"
-}
-check_lines() { # check_lines <file> <jq regex> <max lines>
-  local f=$1 re=$2 max=$3 bad
-  added "$f"
-  if [ "$(wc -l < "$state/lines")" -gt "$max" ]; then fail "$f: mais de $max linhas novas"; fi
-  bad=$(jq -R -r --arg re "$re" 'select(test($re) | not)' "$state/lines" | wc -l | tr -d ' ')
-  if [ "$bad" -gt 0 ]; then fail "$f: $bad linha(s) nova(s) fora do formato esperado"; fi
-}
-cell='[ \p{L}\p{N}ºª°.,;:()/&+'"'"'–—-]+'
-check_lines api-docs/reference/todas-certidoes.mdx \
-  '^$|^\|( *:?-+:? *\|)+$|^\|('"$cell"'\|)+$|^ *<Accordion title="[\p{L} ]+ \([A-Z]{2}\)">$|^ *</?Accordion(Group)?>$' 800
-check_lines api-docs/api-reference/diligences/districts.mdx '^$|^ *"[A-Z]{2}": \[("[A-Z0-9_]+"(, )?)*\],?$' 100
-if ! jq empty "$(p api-docs/openapi.json)" 2>/dev/null; then fail "api-docs/openapi.json não é JSON válido"; fi
-# openapi.json: every changed leaf is a code (UF/comarca) under a key made of identifier characters.
-if ! jq -n -e --slurpfile a api-docs/openapi.json --slurpfile b "$(p api-docs/openapi.json)" '
-  $a[0] as $A | $b[0] as $B
-  | [$B | paths(scalars) | . as $q | select(($A | try getpath($q) catch null) != ($B | getpath($q)))] as $changed
-  | ($changed | length) <= 500
-    and all($changed[]; . as $q
-      | all($q[] | select(type == "string"); test("^[A-Za-z0-9_./{}-]{1,80}$"))
-      and ($B | getpath($q) | type == "string" and test("^[A-Z0-9_]{1,60}$")))' >/dev/null; then
-  fail "api-docs/openapi.json: mudança fora de código de UF/comarca"
+# 4. Content (validate.py): no NUL/CR/control/invisible characters; every added
+# AND removed line on an allowlist; doc cells taken from catalog.json; openapi.json
+# canonical (jq form, no duplicate keys) with changes only in the UF/comarca
+# examples; core-api lines only enum/array entries, comments or blank.
+# Only file names go to the log (public repo), never content.
+oas=$(p api-docs/openapi.json)
+if ! cmp -s <(jq --indent 2 . "$oas" 2>/dev/null) "$oas"; then
+  fail "api-docs/openapi.json fora da forma canônica do jq (chave duplicada, NUL ou formatação)"
 fi
-code_re='child_process|process\.env|eval\(|Function\(|require\(|import\(|https?://|fetch\(|exec(Sync)?\('
-for f in core-api/src/enums/emission.enum.ts core-api/src/consts/certificateOrder.consts.ts \
-  core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts; do
-  added "$f"
-  if [ "$(wc -l < "$state/lines")" -gt 800 ]; then fail "$f: mais de 800 linhas novas"; fi
-  if grep -qE -- "$code_re" "$state/lines"; then fail "$f: linha nova com chamada fora do esperado para enum/const/teste"; fi
-done
+if ! python3 -I "$(dirname "$0")/validate.py" check "$CATALOG" "$plain" "$state/new-scopes.json"; then
+  fail "conteúdo do agente recusado"
+fi
 
 # 5. Copy by fixed name onto the fresh checkouts (regular files only).
 for f in "${CS_FILES[@]}"; do
@@ -102,6 +78,13 @@ for f in "${CS_FILES[@]}"; do
   cp -- "$f" "$base/$(cs_flat "$f")"
   cp -- "$(p "$f")" "$f"
 done
+
+# The core-api test is generated here from a template, never written by the agent.
+spec=core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts
+if ! cs_regular "$spec"; then fail "$spec não é arquivo regular no checkout"; fi
+if ! no_test=$(python3 -I "$(dirname "$0")/validate.py" spec "$CATALOG" "$state/new-scopes.json" "$spec"); then
+  fail "falha ao gerar o teste da core-api"
+fi
 
 # Sanity: nothing but the allowlist changed (NUL-safe).
 check_paths() {
@@ -177,7 +160,9 @@ publish() {
 
   g -C "$dir" push --quiet --force-with-lease="refs/heads/$branch:$remote_sha" origin "HEAD:refs/heads/$branch"
 
-  pr=$(gh pr list -R "$repo" --head "$branch" --base "$base_ref" --state open --json number,isDraft,url -q '.[0] // empty')
+  # --head also matches a fork's branch with the same name: only PRs from this repo count.
+  pr=$(gh pr list -R "$repo" --head "$branch" --base "$base_ref" --state open \
+    --json number,isDraft,url,isCrossRepository -q '[.[] | select(.isCrossRepository | not)][0] // empty')
   if [ -n "$pr" ]; then
     number=$(jq -r .number <<< "$pr")
     is_draft=$(jq -r .isDraft <<< "$pr")
@@ -201,7 +186,7 @@ if [ "$doc_changed" = true ] || [ "$pending" = true ]; then
   if [ -n "$removed" ] || [ -n "$added_unscoped" ]; then draft=true; fi
   if [ "$doc_changed" != true ]; then draft=true; fi
   rows_file="$state/rows"
-  g diff --no-index --no-color -U0 -- "$base/$(cs_flat api-docs/reference/todas-certidoes.mdx)" api-docs/reference/todas-certidoes.mdx \
+  g diff --no-index --text --no-color -U0 -- "$base/$(cs_flat api-docs/reference/todas-certidoes.mdx)" api-docs/reference/todas-certidoes.mdx \
     | awk '/^@@/ { h = 1; next } h && /^[+-]\|/ && !/^[+-]\|[ :|-]+$/' > "$rows_file" || true
   {
     echo "## Doc × catálogo de prod"
@@ -242,6 +227,7 @@ if [ "$core_changed" = true ]; then
     echo
     if [ -n "$unscoped" ]; then echo "- **URGENTE:** UFs vendidas em prod sem escopo na core-api (a API devolve 500): $unscoped."; fi
     if [ "$pending" = true ]; then echo "- $pending_line"; fi
+    if [ -n "$no_test" ]; then echo "- Escopo estadual novo sem teste gerado (UF sem comarca no catálogo): $no_test."; fi
     echo
     echo '```text'
     g -C core-api diff --stat

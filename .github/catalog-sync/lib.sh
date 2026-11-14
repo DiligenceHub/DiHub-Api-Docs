@@ -10,7 +10,6 @@ CS_FILES=(
   api-docs/openapi.json
   core-api/src/enums/emission.enum.ts
   core-api/src/consts/certificateOrder.consts.ts
-  core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts
   out/result.json
 )
 # shellcheck disable=SC2034
@@ -19,12 +18,13 @@ CS_MAX_BYTES=1048576
 # Artifact entry name for a file: no directories, fixed per file.
 cs_flat() { printf '%s.enc' "${1//\//__}"; }
 
-# Artifact key = HMAC-SHA256(key=$CS_PAT, msg="$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"), hex.
-# python3 reads the PAT from the environment: `openssl dgst -hmac "$PAT"` would put it in argv (ps).
+# Artifact key = HMAC-SHA256(key=$CS_KEY_TOKEN, msg="$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"), hex.
+# CS_KEY_TOKEN is the read-only token (DOCS_READONLY_TOKEN); the write PAT never enters job sync.
+# python3 reads it from the environment: `openssl dgst -hmac "$T"` would put it in argv (ps).
 cs_derive_key() {
   python3 -c 'import hashlib, hmac, os
 msg = (os.environ["GITHUB_RUN_ID"] + ":" + os.environ["GITHUB_RUN_ATTEMPT"]).encode()
-print(hmac.new(os.environ["CS_PAT"].encode(), msg, hashlib.sha256).hexdigest())'
+print(hmac.new(os.environ["CS_KEY_TOKEN"].encode(), msg, hashlib.sha256).hexdigest())'
 }
 
 # cs_crypt enc|dec <key file> <in> <out>

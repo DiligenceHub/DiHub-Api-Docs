@@ -25,15 +25,18 @@ Ferramentas: `Read`, `Edit`, `Write`, `Glob` e `Grep`, só dentro do workspace.
 - `api-docs/openapi.json`
 - `core-api/src/enums/emission.enum.ts`
 - `core-api/src/consts/certificateOrder.consts.ts`
-- `core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts`
 - `out/result.json`
 
-O workflow recusa a rodada inteira se uma linha nova fugir destes formatos:
+O workflow recusa a rodada inteira se uma linha nova **ou removida** fugir destes formatos:
 
-- `todas-certidoes.mdx`: linha de tabela (`| ... |`, só letras, números, espaço e `ºª°.,;:()/&+'–—-`), `<Accordion title="Nome (UF)">`, `</Accordion>` ou linha vazia.
-- `districts.mdx`: linha do exemplo JSON (`"UF": ["COMARCA", ...],`) ou linha vazia.
-- `openapi.json`: JSON válido; só valores de UF/comarca (`[A-Z0-9_]`) mudam.
-- core-api: entradas de enum/array e testes, sem `require`, `import()`, `process.env`, `fetch`, `exec` nem URL.
+- `todas-certidoes.mdx`:
+  - linha de tabela (`| a | b |`, só letras, números, espaço e `ºª°.,;:()/&+'–—-`). Cada célula nova sai do `catalog.json`: certidão e emissor de um mesmo item do pacote certo (federal, `ESTADUAL_<UF>_*` do accordion, `MUNICIPAL_<UF>_*`), com as palavras na mesma ordem. Pode omitir palavras, como a doc já faz (`Certidão de Débitos Tributários Estaduais - AL` para `... - SEFAZ AL`; `SEFAZ AL` para `SEFAZ AL - Secretaria da Fazenda do Estado de Alagoas`), nunca acrescentar;
+  - `<Accordion title="Nome do estado (UF)">` com UF de `states` e o nome oficial do estado, `</Accordion>` ou linha vazia;
+  - texto corrido, títulos e o `<AccordionGroup>` não mudam.
+- `districts.mdx`: linha do exemplo JSON (`"UF": ["COMARCA", ...],`) com UF e comarcas de `states`, ou linha vazia.
+- `openapi.json`: mantenha a formatação atual (JSON com indentação de 2 espaços, sem chave repetida). Só mudam o exemplo de `/diligences/districts` (UF e comarcas de `states`) e valores de `state`/`district` nos exemplos.
+- core-api: só entradas de enum (`NOME = 'NOME',`), strings do array (`"Nome da certidão",`), comentário `//` ou linha vazia, dentro do enum/array.
+- Nada de caractere de controle, CR ou caractere invisível.
 
 ## Tarefa 1: doc × catálogo de prod
 
@@ -60,7 +63,7 @@ A core-api tem cópias do catálogo do hydrogen:
 Compare as entradas, não a formatação. Se faltar algo na core-api:
 
 1. Porte as entradas que faltam **na mesma posição relativa** em que estão no hydrogen. Nunca coloque no fim do array.
-2. Para cada `ESTADUAL_<UF>_*` novo, adicione um teste em `core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts` seguindo o padrão do bloco `PI/PA` que já existe.
+2. Não escreva teste: o workflow gera o teste de cada `ESTADUAL_<UF>_*` novo.
 3. O PR sai sempre como draft (código gerado). O `[URGENTE]` por `statesWithoutScope` é do workflow.
 
 ## Lembrete de merge que ainda não chegou em prod

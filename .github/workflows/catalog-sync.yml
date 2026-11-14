@@ -5,12 +5,15 @@ name: Catálogo de prod → doc + core-api
 #
 # Padrão "agente edita, outro job publica":
 # - `catalog` é o único job com OIDC/AWS. Entrega o catalog.json como artifact.
-# - `sync`: o PAT só existe no step que clona os repos, antes do agente. O
-#   Claude lê só o workspace e escreve só nos 6 arquivos permitidos +
-#   out/result.json (regras com path + blockReads/WritesOutsideWorkingDirectories).
-#   Depois dele, esses 7 arquivos saem cifrados num artifact, por nome fixo.
-# - `publish`: runner limpo, onde o agente nunca rodou. Checkout novo com o PAT,
-#   decifra, valida conteúdo e result.json, copia por nome fixo, commita, dá
+# - `sync`: sem PAT de escrita. O token só de leitura (DOCS_READONLY_TOKEN) só
+#   existe no step que clona os repos, antes do agente. O Claude lê só o
+#   workspace e escreve só nos 5 arquivos permitidos + out/result.json (regras
+#   com path + blockReads/WritesOutsideWorkingDirectories). Depois dele, esses
+#   6 arquivos saem cifrados num artifact, por nome fixo.
+# - `publish`: runner limpo, onde o agente nunca rodou. Único job com o PAT de
+#   escrita (DOCS_AUTOMATION_TOKEN). Checkout novo, decifra, valida conteúdo
+#   (validate.py: allowlist por linha, células pelo catalog.json) e result.json,
+#   copia por nome fixo, gera o teste da core-api por template, commita, dá
 #   push só em `automation/*` e abre ou atualiza o PR. Título e corpo saem de
 #   template (publish.sh), nunca de texto livre do agente.
 # - `notify` abre/comenta uma issue quando qualquer job falha.
@@ -100,21 +103,22 @@ jobs:
           sparse-checkout: .github/catalog-sync
           persist-credentials: false
 
-      # Único step deste job com o PAT, e ele roda antes do agente. Sem
+      # Único step deste job com token, e ele roda antes do agente. O token é
+      # só de leitura: o PAT de escrita nunca entra neste job. Sem
       # actions/checkout para os repos privados: o post step dele rodaria
-      # depois do agente com o PAT em INPUT_TOKEN.
+      # depois do agente com o token em INPUT_TOKEN.
       - name: Clona os repos
         id: clone
         shell: bash
         env:
-          CS_PAT: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          CS_KEY_TOKEN: ${{ secrets.DOCS_READONLY_TOKEN }}
           GIT_CONFIG_GLOBAL: /dev/null
           GIT_CONFIG_NOSYSTEM: '1'
         run: |
           set -euo pipefail
           umask 077
-          if [ -z "$CS_PAT" ]; then echo "::error::DOCS_AUTOMATION_TOKEN vazio"; exit 1; fi
-          auth=$(printf 'x-access-token:%s' "$CS_PAT" | base64 | tr -d '\n')
+          if [ -z "$CS_KEY_TOKEN" ]; then echo "::error::DOCS_READONLY_TOKEN vazio"; exit 1; fi
+          auth=$(printf 'x-access-token:%s' "$CS_KEY_TOKEN" | base64 | tr -d '\n')
           echo "::add-mask::$auth"
           # Header só no env deste processo: nada em argv (ps) nem no .git/config.
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
@@ -138,7 +142,7 @@ jobs:
               echo "::error::$dir: remote fora do esperado"
               exit 1
             fi
-            if grep -rqF --exclude-dir=objects -f <(printf '%s\n%s\n' "$CS_PAT" "$auth") "$dir/.git"; then
+            if grep -rqF --exclude-dir=objects -f <(printf '%s\n%s\n' "$CS_KEY_TOKEN" "$auth") "$dir/.git"; then
               echo "::error::$dir: token gravado em .git"
               exit 1
             fi
@@ -146,7 +150,7 @@ jobs:
           echo "docs_sha=$(git -C api-docs rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "core_sha=$(git -C core-api rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-          # Chave do artifact (HMAC do PAT; o job publish rederiva). Fica em
+          # Chave do artifact (HMAC do token de leitura; o job publish rederiva). Fica em
           # RUNNER_TEMP com 600 até o stage.sh, que apaga depois de cifrar.
           # shellcheck source=/dev/null
           . tools/.github/catalog-sync/lib.sh
@@ -200,7 +204,7 @@ jobs:
             echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
-      # Sem PAT, sem AWS, sem Bash. Lê só o workspace; escreve só nos 7 caminhos
+      # Sem PAT nem token de leitura, sem AWS, sem Bash. Lê só o workspace; escreve só nos 6 caminhos
       # abaixo (Write é decidido pelas regras Edit(...); os dois ficam explícitos).
       # github_token = token do job (contents: read), para a action não pedir outro.
       # classify_inline_comments: 'false' desliga o step "Post buffered inline comments".
@@ -230,7 +234,6 @@ jobs:
             "Edit(./api-docs/openapi.json)" "Write(./api-docs/openapi.json)"
             "Edit(./core-api/src/enums/emission.enum.ts)" "Write(./core-api/src/enums/emission.enum.ts)"
             "Edit(./core-api/src/consts/certificateOrder.consts.ts)" "Write(./core-api/src/consts/certificateOrder.consts.ts)"
-            "Edit(./core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts)" "Write(./core-api/src/routes/diligences/helpers/__tests__/emission.helper.spec.ts)"
             "Edit(./out/result.json)" "Write(./out/result.json)"
 
       - name: Cifra a saída do agente
@@ -310,6 +313,7 @@ jobs:
         env:
           CS_PAT: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
           GH_TOKEN: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          CS_KEY_TOKEN: ${{ secrets.DOCS_READONLY_TOKEN }}
           IN_DIR: ${{ runner.temp }}/sync-in
           CATALOG: ${{ runner.temp }}/catalog/catalog.json
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
