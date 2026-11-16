@@ -51,7 +51,8 @@
           {
             "group": "Webhooks",
             "pages": [
-              "webhooks/webhooks"
+              "webhooks/webhooks",
+              "webhooks/payloads"
             ]
           },
           {
@@ -85,6 +86,19 @@
               "api-reference/diligences/download-pdf",
               "api-reference/diligences/download-zip",
               "api-reference/certificates/download-pdf"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/create",
+              "api-reference/webhooks/list",
+              "api-reference/webhooks/update",
+              "api-reference/webhooks/delete",
+              "api-reference/webhooks/rotate-secret",
+              "api-reference/webhooks/test",
+              "api-reference/webhooks/deliveries",
+              "api-reference/webhooks/retry-delivery"
             ]
           }
         ]

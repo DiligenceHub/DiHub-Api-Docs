@@ -74,6 +74,13 @@ The OpenAPI spec at `openapi.json` (root) drives the API Reference tab automatic
 - Commit frequently throughout development
 - NEVER skip or disable pre-commit hooks
 
+## Regras de conteúdo
+
+- UFs nunca em texto corrido (página, `llms.txt`, descrição do `openapi.json`). Os estados só aparecem nos accordions de `reference/todas-certidoes.mdx`.
+- Diligência nunca aparece como falha: `status.label` é `Em andamento` ou `Concluída`; `diligenceStatus` é `IN_PROGRESS` ou `COMPLETED`.
+- Sem o óbvio (ex.: "a consulta de saldo não consome créditos").
+- Certidões, emissores e comarcas seguem o catálogo de prod, nunca suposição.
+
 ## Do not
 - Skip frontmatter on any MDX file
 - Use absolute URLs for internal links

@@ -1,0 +1,172 @@
+---
+title: 'Payloads'
+description: 'Formato do corpo de cada evento de webhook.'
+icon: 'brackets-curly'
+---
+
+Todo evento tem o mesmo envelope: `id` (igual ao header `webhook-id`), `type`, `createdAt` e `data`. O `data.status` traz os campos de [`GET /diligences/{id}/status`](/api-reference/diligences/status), com uma diferença: no webhook, `finishedCertificates` conta também a certidão Potencialmente Positiva com observação, e o GET conta só as Concluídas. Por isso um `diligence.completed` com 24/24 pode aparecer como 23/24 no GET. Para conciliar, use a situação de cada certidão. Já o `data.certificate` traz os de [`GET /diligences/{id}/certificates`](/api-reference/diligences/certificates).
+
+<CodeGroup>
+```json certificate.updated
+{
+  "id": "evt_6f1c2a90-…",
+  "type": "certificate.updated",
+  "createdAt": "2026-11-09T14:03:11Z",
+  "data": {
+    "diligenceId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": {
+      "label": "Em andamento",
+      "finishedCertificates": 7,
+      "totalCertificates": 24
+    },
+    "certificate": {
+      "id": "9b2d7c1e-4f3a-4b8e-a1d2-3c4b5a6f7e8d",
+      "issuer": "TST - Tribunal Superior do Trabalho",
+      "certificateName": "Certidão Negativa de Débitos Trabalhistas",
+      "label": "Concluída",
+      "certificateStatus": "Negativa",
+      "observations": null,
+      "fileUrl": "https://…s3.amazonaws.com/…pdf?X-Amz-Signature=…",
+      "fileUrlExpiresAt": "2026-11-09T15:03:11Z"
+    }
+  }
+}
+```
+
+```json diligence.created
+{
+  "id": "evt_1a2b3c4d-…",
+  "type": "diligence.created",
+  "createdAt": "2026-11-09T14:00:02Z",
+  "data": {
+    "diligenceId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": {
+      "label": "Em andamento",
+      "finishedCertificates": 0,
+      "totalCertificates": 24
+    }
+  }
+}
+```
+
+```json diligence.completed
+{
+  "id": "evt_9e8f7a6b-…",
+  "type": "diligence.completed",
+  "createdAt": "2026-11-09T14:41:37Z",
+  "data": {
+    "diligenceId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": {
+      "label": "Concluída",
+      "finishedCertificates": 24,
+      "totalCertificates": 24
+    }
+  }
+}
+```
+</CodeGroup>
+
+## Campos de `data.certificate`
+
+<ResponseField name="id" type="string">
+  Id da certidão na diligência. Serve para [`GET /certificate/{id}/download-pdf`](/api-reference/certificates/download-pdf).
+</ResponseField>
+<ResponseField name="issuer" type="string">
+  Órgão emissor, com o mesmo nome de `GET /diligences/{id}/certificates`.
+</ResponseField>
+<ResponseField name="certificateName" type="string">
+  Nome da certidão.
+</ResponseField>
+<ResponseField name="label" type="string">
+  `Em andamento`, `Em acompanhamento`, `Concluída` ou `Potencialmente Positiva`.
+</ResponseField>
+<ResponseField name="certificateStatus" type="string | null">
+  `Negativa`, `Positiva`, `Positiva com efeitos de negativa` ou `Potencialmente Positiva`. `null` enquanto não há resultado.
+</ResponseField>
+<ResponseField name="observations" type="string | null">
+  Observação da DiHub sobre o resultado, quando houver. Aparece em certidões `Potencialmente Positiva` que têm observação; nos outros casos vem `null`.
+</ResponseField>
+<ResponseField name="fileUrl" type="string">
+  Link assinado para o PDF, válido por 1 hora. Só vem quando a certidão já tem arquivo. Cada tentativa de entrega leva um link novo, então uma retentativa nunca chega com link vencido.
+</ResponseField>
+<ResponseField name="fileUrlExpiresAt" type="string">
+  Até quando o `fileUrl` vale.
+</ResponseField>
+
+## Exemplos por situação da certidão
+
+<CodeGroup>
+```json Em andamento
+"certificate": {
+  "id": "9b2d7c1e-4f3a-4b8e-a1d2-3c4b5a6f7e8d",
+  "issuer": "TST - Tribunal Superior do Trabalho",
+  "certificateName": "Certidão Negativa de Débitos Trabalhistas",
+  "label": "Em andamento",
+  "certificateStatus": null,
+  "observations": null
+}
+```
+
+```json Em acompanhamento
+// O tribunal não libera esta certidão na hora. A DiHub acompanha o pedido
+// e envia outro certificate.updated quando ela for concluída.
+"certificate": {
+  "id": "1c7e2b90-6d4a-4f1e-9b3c-8a2d5e7f0c14",
+  "issuer": "TJMG - Tribunal de Justiça de Minas Gerais",
+  "certificateName": "Certidão Cível de 1ª Instância",
+  "label": "Em acompanhamento",
+  "certificateStatus": null,
+  "observations": null
+}
+```
+
+```json Concluída · Negativa
+"certificate": {
+  "id": "9b2d7c1e-4f3a-4b8e-a1d2-3c4b5a6f7e8d",
+  "issuer": "TST - Tribunal Superior do Trabalho",
+  "certificateName": "Certidão Negativa de Débitos Trabalhistas",
+  "label": "Concluída",
+  "certificateStatus": "Negativa",
+  "observations": null,
+  "fileUrl": "https://…s3.amazonaws.com/…pdf?X-Amz-Signature=…",
+  "fileUrlExpiresAt": "2026-11-09T15:03:11Z"
+}
+```
+
+```json Concluída · Positiva
+"certificate": {
+  "id": "4e8a1f62-0b3d-4c9e-a7f5-2d6b9c1e3a70",
+  "issuer": "Receita Federal",
+  "certificateName": "Certidão de Débitos Relativos a Créditos Tributários Federais",
+  "label": "Concluída",
+  "certificateStatus": "Positiva",
+  "observations": null,
+  "fileUrl": "https://…s3.amazonaws.com/…pdf?X-Amz-Signature=…",
+  "fileUrlExpiresAt": "2026-11-09T15:03:11Z"
+}
+```
+
+```json Concluída · Positiva c/ efeitos de negativa
+"certificate": {
+  "id": "4e8a1f62-0b3d-4c9e-a7f5-2d6b9c1e3a70",
+  "issuer": "Receita Federal",
+  "certificateName": "Certidão de Débitos Relativos a Créditos Tributários Federais",
+  "label": "Concluída",
+  "certificateStatus": "Positiva com efeitos de negativa",
+  "observations": null,
+  "fileUrl": "https://…s3.amazonaws.com/…pdf?X-Amz-Signature=…",
+  "fileUrlExpiresAt": "2026-11-09T15:03:11Z"
+}
+```
+
+```json Potencialmente Positiva
+"certificate": {
+  "id": "7a3c9e15-2f8b-4d6a-b0e4-5c1f8d2a9b36",
+  "issuer": "TJSP - Tribunal de Justiça de São Paulo",
+  "certificateName": "Certidão de Distribuição Cível",
+  "label": "Potencialmente Positiva",
+  "certificateStatus": "Potencialmente Positiva",
+  "observations": "Constam registros que podem pertencer à parte pesquisada. Confira os processos listados no site do tribunal antes de concluir a análise."
+}
+```
+</CodeGroup>

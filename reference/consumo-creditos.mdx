@@ -24,6 +24,7 @@ Uma diligência aceita no máximo **2 comarcas**.
 
 Exemplos:
 
+- 1 comarca, sem Análise DiHub = **1 crédito**
 - 1 comarca + Análise DiHub = **1,5 crédito**
 - 2 comarcas no mesmo estado + Análise DiHub = **1,5 crédito**
 - 2 comarcas em estados diferentes, sem Análise DiHub = **2 créditos**
@@ -50,9 +51,5 @@ Exemplos:
 
 Para CPF, a Análise DiHub só é feita se o titular tiver 18 anos ou mais.
 
-- **Certidões + Análise DiHub:** as certidões são emitidas e o 0,5 crédito da análise não é cobrado.
+- **Certidões + Análise DiHub:** as certidões são emitidas e o 0,5 crédito da análise não é cobrado. A diligência custa 1 crédito (2 com comarcas em estados diferentes).
 - **Somente Análise DiHub:** a API retorna HTTP `400` (`Análise não realizada: usuário menor de idade.`) e nenhum crédito é consumido.
-
-<Note>
-  A consulta de saldo (`GET /credits/balance`) não consome créditos.
-</Note>

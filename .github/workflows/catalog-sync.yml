@@ -1,0 +1,351 @@
+name: Catálogo de prod → doc + core-api
+
+# Compara o catálogo de prod (Lambda catalogExport da core-api) com a doc e
+# as cópias de catálogo da core-api com o hydrogen. Divergência vira PR-lembrete.
+#
+# Padrão "agente edita, outro job publica":
+# - `catalog` é o único job com OIDC/AWS. Entrega o catalog.json como artifact.
+# - `sync`: sem PAT de escrita. O token só de leitura (DOCS_READONLY_TOKEN) só
+#   existe no step que clona os repos, antes do agente. O Claude lê só o
+#   workspace e escreve só nos 5 arquivos permitidos + out/result.json (regras
+#   com path + blockReads/WritesOutsideWorkingDirectories). Depois dele, esses
+#   6 arquivos saem cifrados num artifact, por nome fixo.
+# - `publish`: runner limpo, onde o agente nunca rodou. Único job com o PAT de
+#   escrita (DOCS_AUTOMATION_TOKEN). Checkout novo, decifra, valida conteúdo
+#   (validate.py: allowlist por linha, células pelo catalog.json) e result.json,
+#   copia por nome fixo, gera o teste da core-api por template, commita, dá
+#   push só em `automation/*` e abre ou atualiza o PR. Título e corpo saem de
+#   template (publish.sh), nunca de texto livre do agente.
+# - `notify` abre/comenta uma issue quando qualquer job falha.
+# A role de CATALOG_EXPORT_ROLE_ARN só deve confiar em
+# `repo:DiligenceHub/DiHub-Api-Docs:ref:refs/heads/main` (ver corpo do PR #9).
+on:
+  repository_dispatch:
+    types: [hydrogen-catalog-changed]
+  schedule:
+    - cron: '0 11 * * 1' # segunda, 08:00 BRT
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só mostra o que faria: sem push e sem PR'
+        type: boolean
+        default: false
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write # OIDC para a role da AWS
+    env:
+      # Abaixo disso é falha do export, não mudança de catálogo. Ajuste se o
+      # catálogo encolher de verdade.
+      MIN_STATES: 10
+    steps:
+      - name: Credenciais AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.CATALOG_EXPORT_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Catálogo de prod
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws lambda invoke --function-name core-api-prod-catalogExport \
+            --cli-binary-format raw-in-base64-out catalog.json > invoke.json
+          if jq -e '.FunctionError' invoke.json >/dev/null; then
+            # Repo público: o payload de erro traz stack e host do banco. Só o tipo vai pro log.
+            echo "::error::catalogExport falhou: $(jq -r '.errorType // "sem errorType"' catalog.json 2>/dev/null || echo 'resposta não é JSON')"
+            exit 1
+          fi
+          states=$(jq '.states | length' catalog.json)
+          if [ "$states" -lt "$MIN_STATES" ]; then
+            echo "::error::catalog.json com $states UFs (mínimo $MIN_STATES). Nada foi aberto."
+            exit 1
+          fi
+          if ! jq -e '(.packages.FEDERAL_CPF | length > 0) and (.packages.FEDERAL_CNPJ | length > 0)' catalog.json >/dev/null; then
+            echo "::error::catalog.json sem os pacotes federais. Nada foi aberto."
+            exit 1
+          fi
+          jq '{states: (.states | keys), statesWithoutScope}' catalog.json
+
+      - name: Guarda o catálogo
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalog
+          path: catalog.json
+          retention-days: 1
+          if-no-files-found: error
+
+  sync:
+    needs: catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      docs_sha: ${{ steps.clone.outputs.docs_sha }}
+      core_sha: ${{ steps.clone.outputs.core_sha }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      # Scripts e prompt na versão deste workflow (github.sha), não na main da doc.
+      - name: Scripts do workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tools
+          sparse-checkout: .github/catalog-sync
+          persist-credentials: false
+
+      # Único step deste job com token, e ele roda antes do agente. O token é
+      # só de leitura: o PAT de escrita nunca entra neste job. Sem
+      # actions/checkout para os repos privados: o post step dele rodaria
+      # depois do agente com o token em INPUT_TOKEN.
+      - name: Clona os repos
+        id: clone
+        shell: bash
+        env:
+          CS_KEY_TOKEN: ${{ secrets.DOCS_READONLY_TOKEN }}
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: '1'
+        run: |
+          set -euo pipefail
+          umask 077
+          if [ -z "$CS_KEY_TOKEN" ]; then echo "::error::DOCS_READONLY_TOKEN vazio"; exit 1; fi
+          auth=$(printf 'x-access-token:%s' "$CS_KEY_TOKEN" | base64 | tr -d '\n')
+          echo "::add-mask::$auth"
+          # Header só no env deste processo: nada em argv (ps) nem no .git/config.
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          export GIT_CONFIG_VALUE_0
+          git clone --quiet --branch main https://github.com/DiligenceHub/DiHub-Api-Docs.git api-docs
+          git clone --quiet --branch main https://github.com/DiligenceHub/hydrogen.git hydrogen
+          git clone --quiet --branch develop https://github.com/DiligenceHub/core-api.git core-api
+          unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+
+          # Prova de que nenhuma credencial ficou nos clones.
+          for pair in api-docs:DiHub-Api-Docs hydrogen:hydrogen core-api:core-api; do
+            dir=${pair%%:*}
+            name=${pair#*:}
+            if [ -n "$(git -C "$dir" config --get-all http.extraheader || true)" ] \
+              || [ -n "$(git -C "$dir" config --get-regexp 'extraheader$' || true)" ]; then
+              echo "::error::$dir: extraheader ficou no .git/config"
+              exit 1
+            fi
+            if [ "$(git -C "$dir" config --get remote.origin.url)" != "https://github.com/DiligenceHub/$name.git" ]; then
+              echo "::error::$dir: remote fora do esperado"
+              exit 1
+            fi
+            if grep -rqF --exclude-dir=objects -f <(printf '%s\n%s\n' "$CS_KEY_TOKEN" "$auth") "$dir/.git"; then
+              echo "::error::$dir: token gravado em .git"
+              exit 1
+            fi
+          done
+          echo "docs_sha=$(git -C api-docs rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "core_sha=$(git -C core-api rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+          # Chave do artifact (HMAC do token de leitura; o job publish rederiva). Fica em
+          # RUNNER_TEMP com 600 até o stage.sh, que apaga depois de cifrar.
+          # shellcheck source=/dev/null
+          . tools/.github/catalog-sync/lib.sh
+          key=$(cs_derive_key)
+          echo "::add-mask::$key"
+          printf '%s' "$key" > "$RUNNER_TEMP/catalog-sync.key"
+          chmod 600 "$RUNNER_TEMP/catalog-sync.key"
+
+      - name: Catálogo de prod
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: catalog
+
+      - name: Contexto do disparo
+        env:
+          BEFORE: ${{ github.event.client_payload.before }}
+          AFTER: ${{ github.event.client_payload.after }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha_re='^[0-9a-f]{40}$'
+          if [ -n "${AFTER:-}" ]; then
+            if ! [[ "$AFTER" =~ $sha_re && "${BEFORE:-}" =~ $sha_re ]]; then
+              echo "::error::client_payload.before/after não são SHAs de 40 caracteres"
+              exit 1
+            fi
+            git -C hydrogen cat-file -e "${AFTER}^{commit}"
+            # Push que criou a branch manda before zerado: compara com o pai.
+            if ! git -C hydrogen cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              BEFORE=$(git -C hydrogen rev-parse --verify "${AFTER}^")
+            fi
+            git -C hydrogen diff --end-of-options "$BEFORE" "$AFTER" -- src/libs/commom > hydrogen.diff
+            echo "Disparo: merge no hydrogen ($BEFORE..$AFTER)" > trigger.txt
+          else
+            : > hydrogen.diff
+            echo "Disparo: $GITHUB_EVENT_NAME" > trigger.txt
+          fi
+          wc -l hydrogen.diff
+          mkdir out
+
+      - name: Prompt
+        id: prompt
+        shell: bash
+        run: |
+          set -euo pipefail
+          delim="PROMPT_$(openssl rand -hex 16)"
+          {
+            echo "text<<$delim"
+            cat tools/.github/catalog-sync/prompt.md
+            echo
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
+      # Sem PAT nem token de leitura, sem AWS, sem Bash. Lê só o workspace; escreve só nos 6 caminhos
+      # abaixo (Write é decidido pelas regras Edit(...); os dois ficam explícitos).
+      # github_token = token do job (contents: read), para a action não pedir outro.
+      # classify_inline_comments: 'false' desliga o step "Post buffered inline comments".
+      - name: Claude compara e edita
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
+        env:
+          # Sem Bash não há subprocesso; fica ligado como defesa extra.
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prompt.outputs.text }}
+          classify_inline_comments: 'false'
+          settings: >-
+            {"permissions": {
+              "blockReadsOutsideWorkingDirectories": true,
+              "blockWritesOutsideWorkingDirectories": true,
+              "disableBypassPermissionsMode": "disable",
+              "deny": ["Bash", "WebFetch", "WebSearch", "NotebookEdit"]}}
+          claude_args: >-
+            --max-turns 80
+            --permission-mode dontAsk
+            --allowedTools
+            "Read(./**)" "Glob" "Grep"
+            "Edit(./api-docs/reference/todas-certidoes.mdx)" "Write(./api-docs/reference/todas-certidoes.mdx)"
+            "Edit(./api-docs/api-reference/diligences/districts.mdx)" "Write(./api-docs/api-reference/diligences/districts.mdx)"
+            "Edit(./api-docs/openapi.json)" "Write(./api-docs/openapi.json)"
+            "Edit(./core-api/src/enums/emission.enum.ts)" "Write(./core-api/src/enums/emission.enum.ts)"
+            "Edit(./core-api/src/consts/certificateOrder.consts.ts)" "Write(./core-api/src/consts/certificateOrder.consts.ts)"
+            "Edit(./out/result.json)" "Write(./out/result.json)"
+
+      - name: Cifra a saída do agente
+        shell: bash
+        run: bash tools/.github/catalog-sync/stage.sh "$RUNNER_TEMP/sync-out"
+
+      # Repo público: artifact é baixável por qualquer usuário logado. Por isso vai cifrado.
+      - name: Guarda a saída cifrada
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sync-out
+          path: ${{ runner.temp }}/sync-out
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [catalog, sync]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write # apagar o artifact sync-out depois de baixar
+    steps:
+      - name: Scripts do workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tools
+          sparse-checkout: .github/catalog-sync
+          persist-credentials: false
+
+      # Mesmo commit que o agente leu, para a cópia por arquivo inteiro não
+      # desfazer o que entrou na main/develop no meio da rodada.
+      - name: Checkout DiHub-Api-Docs
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.sync.outputs.docs_sha }}
+          path: api-docs
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout core-api
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: DiligenceHub/core-api
+          ref: ${{ needs.sync.outputs.core_sha }}
+          token: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          path: core-api
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Catálogo de prod
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: catalog
+          path: ${{ runner.temp }}/catalog
+
+      - name: Saída do agente
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sync-out
+          path: ${{ runner.temp }}/sync-in
+
+      - name: Apaga o artifact sync-out
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.sync.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]; then echo "::error::artifact-id inválido"; exit 1; fi
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+
+      - name: Abre ou atualiza os PRs-lembrete
+        shell: bash
+        env:
+          CS_PAT: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          GH_TOKEN: ${{ secrets.DOCS_AUTOMATION_TOKEN }}
+          CS_KEY_TOKEN: ${{ secrets.DOCS_READONLY_TOKEN }}
+          IN_DIR: ${{ runner.temp }}/sync-in
+          CATALOG: ${{ runner.temp }}/catalog/catalog.json
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          BEFORE: ${{ github.event.client_payload.before }}
+          AFTER: ${{ github.event.client_payload.after }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # Ignora qualquer gitconfig global/de sistema.
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: '1'
+        run: bash tools/.github/catalog-sync/publish.sh
+
+  notify:
+    needs: [catalog, sync, publish]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Abre ou comenta a issue de falha
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title='catalog-sync falhou'
+          number=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number,title \
+            -q ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [ -n "$number" ]; then
+            gh issue comment "$number" -R "$GITHUB_REPOSITORY" --body "Falhou de novo: $RUN_URL"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$title" \
+              --body "A sincronização do catálogo falhou e nenhum PR-lembrete foi garantido. Run: $RUN_URL"
+          fi
