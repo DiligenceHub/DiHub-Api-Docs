@@ -24,7 +24,7 @@ Toda resposta de erro da API vem em JSON com o mesmo formato. Use o campo `code`
 | `code` | Código estável do erro, da tabela abaixo |
 | `hint` | O que fazer para resolver |
 
-As respostas `401` mantêm também o campo `error` (`"Unauthorized"`).
+Algumas respostas trazem também o campo `error`, com o nome do status HTTP: as `401` (`"Unauthorized"`), as `429` (`"Too Many Requests"`) e as `500` de falha na autenticação (`"Internal Server Error"`).
 
 Falhas da infraestrutura antes da API, como timeout do gateway (`503`), podem chegar só com `message`. Trate a ausência de `code` como `INTERNAL_ERROR`.
 
@@ -32,13 +32,15 @@ Falhas da infraestrutura antes da API, como timeout do gateway (`503`), podem ch
 
 | `code` | Status | Quando acontece | O que fazer |
 |--------|--------|-----------------|-------------|
-| `INVALID_REQUEST` | 400 | Parâmetros ou corpo fora do contrato | Compare com o [OpenAPI](/openapi.json). O campo `data` traz o que falhou |
+| `INVALID_REQUEST` | 400, 422 | Parâmetros ou corpo fora do contrato | Compare com o [OpenAPI](/openapi.json). O campo `data` traz o que falhou |
 | `INSUFFICIENT_CREDITS` | 400 | Saldo menor que o custo da diligência | Consulte `GET /credits/balance` e veja [consumo de créditos](/reference/consumo-creditos) |
 | `UNAUTHORIZED` | 401 | Header `X-Api-Token` ausente | Envie o token. Veja [autenticação](/introduction/authentication) |
 | `INVALID_TOKEN` | 401 | Token inexistente ou expirado | Gere um novo token no painel |
-| `FORBIDDEN` | 403 | O recurso não pertence à conta do token | Confira o id e o token usado |
+| `FORBIDDEN` | 403 | O recurso não pertence à conta do token, ou falta permissão | Confira o id e o token usado |
 | `NOT_FOUND` | 404 | Diligência, certidão ou documento não encontrado | Confira o id e o token usado |
 | `ROUTE_NOT_FOUND` | 404 | Método ou caminho inexistente | Veja os [endpoints](/api-reference/overview) |
+| `CONFLICT` | 409 | Já existe um webhook com a mesma URL no escopo, ou o reenvio de uma entrega foi recusado (o motivo vem em `data.reason`) | Consulte o estado atual do recurso antes de tentar de novo |
+| `RATE_LIMITED` | 429 | Limite de requisições da conta excedido | Espere os segundos indicados no header `Retry-After` antes de tentar de novo |
 | `INTERNAL_ERROR` | 500 | Falha do nosso lado | Tente de novo em alguns minutos. Se continuar, envie ao suporte o valor do header `X-Request-Id` |
 
 <Info>

@@ -2236,7 +2236,11 @@
       "ErrorResponse": {
         "type": "object",
         "required": [
-          "message"
+          "statusCode",
+          "message",
+          "data",
+          "code",
+          "hint"
         ],
         "properties": {
           "statusCode": {
@@ -2273,7 +2277,9 @@
               "FORBIDDEN",
               "NOT_FOUND",
               "ROUTE_NOT_FOUND",
+              "CONFLICT",
               "INSUFFICIENT_CREDITS",
+              "RATE_LIMITED",
               "INTERNAL_ERROR"
             ],
             "description": "Código estável para tratar o erro no seu sistema",
@@ -2341,17 +2347,24 @@
         }
       },
       "AuthErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "example": "Unauthorized"
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
           },
-          "message": {
-            "type": "string",
-            "example": "Invalid token"
+          {
+            "type": "object",
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "type": "string",
+                "description": "Nome do status HTTP",
+                "example": "Unauthorized"
+              }
+            }
           }
-        }
+        ]
       },
       "Webhook": {
         "type": "object",
@@ -2523,14 +2536,22 @@
                 "summary": "Header ausente",
                 "value": {
                   "error": "Unauthorized",
-                  "message": "Missing or invalid api token"
+                  "statusCode": 401,
+                  "message": "Missing or invalid api token",
+                  "data": null,
+                  "code": "UNAUTHORIZED",
+                  "hint": "Envie o token no header X-Api-Token. Veja como gerar em https://docs.dihub.com.br/introduction/authentication."
                 }
               },
               "invalid": {
                 "summary": "Token inexistente, vencido ou desativado",
                 "value": {
                   "error": "Unauthorized",
-                  "message": "Invalid token"
+                  "statusCode": 401,
+                  "message": "Invalid token",
+                  "data": null,
+                  "code": "INVALID_TOKEN",
+                  "hint": "O token enviado em X-Api-Token não existe ou expirou. Gere um novo no painel: https://docs.dihub.com.br/introduction/authentication."
                 }
               }
             }
@@ -2545,12 +2566,11 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
-              "error": "Unauthorized",
-              "statusCode": 401,
-              "message": "Missing or invalid api token",
+              "statusCode": 403,
+              "message": "Diligence not found",
               "data": null,
-              "code": "UNAUTHORIZED",
-              "hint": "Envie o token no header X-Api-Token. Veja como gerar em https://docs.dihub.com.br/introduction/authentication."
+              "code": "FORBIDDEN",
+              "hint": "Confira se o recurso pertence à conta do token enviado em X-Api-Token."
             }
           }
         }
