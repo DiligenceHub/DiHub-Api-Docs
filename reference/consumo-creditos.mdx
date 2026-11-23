@@ -19,7 +19,7 @@ Uma diligência aceita no máximo **2 comarcas**.
 | Certidões de 1 comarca | 1 |
 | Certidões de 2 comarcas no <ins>mesmo estado</ins> | 1 |
 | Certidões de 2 comarcas em <ins>estados diferentes</ins> | 2 |
-| Somente Análise DiHub | 1 |
+| Somente Análise DiHub | 1, ou o valor da sua condição comercial |
 | Certidões + Análise DiHub | +0,5 sobre o valor das certidões |
 
 Exemplos:
@@ -30,11 +30,15 @@ Exemplos:
 - 2 comarcas em estados diferentes, sem Análise DiHub = **2 créditos**
 - 2 comarcas em estados diferentes + Análise DiHub = **2,5 créditos**
 
+## Condição comercial da Análise DiHub
+
+Pedida sozinha, a Análise DiHub custa 1 crédito. Assinaturas com condição comercial negociada pagam de 0,5 a 1 crédito, e vale a assinatura do saldo que paga a diligência: a sua, quando paga o seu saldo, ou a da organização, quando paga o saldo dela. O valor é o mesmo na API e no [app](https://app.dihub.com.br). Os demais cenários da tabela não mudam.
+
 ## Regras
 
-- **Saldo usado:** entram na conta os créditos válidos do usuário dono do token e da organização dele. Créditos vencidos não contam.
+- **Saldo usado:** um saldo só paga cada diligência. Primeiro o do usuário dono do token, se cobrir o valor; senão o da organização dele, se cobrir. Os dois não se somam. Créditos vencidos não contam: o crédito vale até o fim do dia do vencimento em UTC (21h no horário de Brasília).
 - **Ordem de consumo:** os créditos com vencimento mais próximo são consumidos primeiro.
-- **Saldo insuficiente:** a emissão é recusada com HTTP `400` e nenhum crédito é consumido. A resposta informa os créditos necessários e o saldo disponível:
+- **Saldo insuficiente:** a emissão é recusada com HTTP `400` e nenhum crédito é consumido. A resposta informa os créditos necessários e a soma dos dois saldos, que pode ser maior que o necessário quando nenhum deles cobre o valor sozinho:
 
 ```json
 {
@@ -46,6 +50,8 @@ Exemplos:
   }
 }
 ```
+
+- **Créditos congelados:** se o saldo que pagaria tem créditos congelados por pendência de pagamento, a emissão é recusada com HTTP `400` (`Credits are frozen`, código `FROZEN_CREDITS`) e nenhum crédito é consumido.
 
 ## Análise DiHub para menor de idade
 

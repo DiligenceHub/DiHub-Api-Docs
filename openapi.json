@@ -44,7 +44,7 @@
           "Créditos"
         ],
         "summary": "Consultar saldo de créditos",
-        "description": "Retorna o saldo de créditos disponíveis (não vencidos) do usuário dono do token somado ao da organização dele, se houver.",
+        "description": "Retorna a soma dos créditos não vencidos do usuário dono do token com os da organização dele, se houver. Entram créditos disponíveis, prestes a congelar e congelados. A emissão é paga por um saldo só (o do usuário, se cobrir o valor; senão o da organização), então um total que só cobre somando os dois não autoriza a emissão, e créditos congelados no saldo que pagaria recusam a emissão com `FROZEN_CREDITS`.",
         "operationId": "getBalance",
         "security": [
           {
@@ -74,7 +74,7 @@
                       "properties": {
                         "balance": {
                           "type": "number",
-                          "description": "Créditos disponíveis (usuário + organização). Pode ter casa decimal, ex.: 15.5.",
+                          "description": "Créditos não vencidos do usuário somados aos da organização, incluindo os congelados. Pode ter casa decimal, ex.: 15.5.",
                           "example": 15.5
                         }
                       }
@@ -397,7 +397,7 @@
                 },
                 "creditAnalysisOnly": {
                   "summary": "Só Análise DiHub",
-                  "description": "Custo: 1 crédito. Titular precisa ter 18 anos ou mais.",
+                  "description": "Custo: 1 crédito, ou de 0,5 a 1 conforme a condição comercial da assinatura. Titular precisa ter 18 anos ou mais.",
                   "value": {
                     "document": "12345678901",
                     "creditAnalysisOnly": true
@@ -545,7 +545,19 @@
                       "data": {
                         "requiredCredits": 2,
                         "totalCreditsAmount": 1
-                      }
+                      },
+                      "code": "INSUFFICIENT_CREDITS",
+                      "hint": "Consulte o saldo em GET /credits/balance e compre créditos no painel da DiHub. O campo data traz os créditos necessários."
+                    }
+                  },
+                  "frozenCredits": {
+                    "summary": "Créditos congelados",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Credits are frozen",
+                      "data": null,
+                      "code": "FROZEN_CREDITS",
+                      "hint": "A carteira que pagaria esta emissão tem créditos congelados por pendência de pagamento. Regularize o pagamento no painel da DiHub para liberar os créditos."
                     }
                   },
                   "underage": {
@@ -2101,7 +2113,7 @@
           },
           "creditAnalysisOnly": {
             "type": "boolean",
-            "description": "Faz só a Análise DiHub, sem certidões (1 crédito). Dispensa `districts`. Titular precisa ter 18 anos ou mais.",
+            "description": "Faz só a Análise DiHub, sem certidões (1 crédito, ou de 0,5 a 1 conforme a condição comercial da assinatura). Dispensa `districts`. Titular precisa ter 18 anos ou mais.",
             "default": false
           },
           "useOldModel": {
@@ -2279,6 +2291,7 @@
               "ROUTE_NOT_FOUND",
               "CONFLICT",
               "INSUFFICIENT_CREDITS",
+              "FROZEN_CREDITS",
               "RATE_LIMITED",
               "INTERNAL_ERROR"
             ],
