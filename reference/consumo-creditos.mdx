@@ -36,7 +36,7 @@ Pedida sozinha, a Análise DiHub custa 1 crédito. Assinaturas com condição co
 
 ## Regras
 
-- **Saldo usado:** um saldo só paga cada diligência. Primeiro o do usuário dono do token, se cobrir o valor; senão o da organização dele, se cobrir. Os dois não se somam. Créditos vencidos não contam.
+- **Saldo usado:** um saldo só paga cada diligência. Primeiro o do usuário dono do token, se cobrir o valor; senão o da organização dele, se cobrir. Os dois não se somam. Créditos vencidos não contam: o crédito vale até o fim do dia do vencimento em UTC (21h no horário de Brasília).
 - **Ordem de consumo:** os créditos com vencimento mais próximo são consumidos primeiro.
 - **Saldo insuficiente:** a emissão é recusada com HTTP `400` e nenhum crédito é consumido. A resposta informa os créditos necessários e a soma dos dois saldos, que pode ser maior que o necessário quando nenhum deles cobre o valor sozinho:
 
