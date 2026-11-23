@@ -34,6 +34,7 @@ Falhas da infraestrutura antes da API, como timeout do gateway (`503`), podem ch
 |--------|--------|-----------------|-------------|
 | `INVALID_REQUEST` | 400, 422 | Parâmetros ou corpo fora do contrato | Compare com o [OpenAPI](/openapi.json). O campo `data` traz o que falhou |
 | `INSUFFICIENT_CREDITS` | 400 | Saldo menor que o custo da diligência | Consulte `GET /credits/balance` e veja [consumo de créditos](/reference/consumo-creditos) |
+| `FROZEN_CREDITS` | 400 | O saldo que pagaria a diligência tem créditos congelados | Regularize o pagamento no [painel financeiro](https://app.dihub.com.br/perfil/financeiro) |
 | `UNAUTHORIZED` | 401 | Header `X-Api-Token` ausente | Envie o token. Veja [autenticação](/introduction/authentication) |
 | `INVALID_TOKEN` | 401 | Token inexistente ou expirado | Gere um novo token no painel |
 | `FORBIDDEN` | 403 | O recurso não pertence à conta do token, ou falta permissão | Confira o id e o token usado |

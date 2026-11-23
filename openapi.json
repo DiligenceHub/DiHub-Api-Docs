@@ -397,7 +397,7 @@
                 },
                 "creditAnalysisOnly": {
                   "summary": "Só Análise DiHub",
-                  "description": "Custo: 1 crédito. Titular precisa ter 18 anos ou mais.",
+                  "description": "Custo: 1 crédito, ou de 0,5 a 1 conforme a condição comercial da assinatura. Titular precisa ter 18 anos ou mais.",
                   "value": {
                     "document": "12345678901",
                     "creditAnalysisOnly": true
@@ -2101,7 +2101,7 @@
           },
           "creditAnalysisOnly": {
             "type": "boolean",
-            "description": "Faz só a Análise DiHub, sem certidões (1 crédito). Dispensa `districts`. Titular precisa ter 18 anos ou mais.",
+            "description": "Faz só a Análise DiHub, sem certidões (1 crédito, ou de 0,5 a 1 conforme a condição comercial da assinatura). Dispensa `districts`. Titular precisa ter 18 anos ou mais.",
             "default": false
           },
           "useOldModel": {
@@ -2279,6 +2279,7 @@
               "ROUTE_NOT_FOUND",
               "CONFLICT",
               "INSUFFICIENT_CREDITS",
+              "FROZEN_CREDITS",
               "RATE_LIMITED",
               "INTERNAL_ERROR"
             ],
